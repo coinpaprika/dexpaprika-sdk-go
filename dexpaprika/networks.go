@@ -19,6 +19,7 @@ type Network struct {
 }
 
 // List returns a list of all supported blockchain networks.
+// Implements the getNetworks operation from the OpenAPI spec.
 func (s *NetworksService) List(ctx context.Context) ([]Network, error) {
 	req, err := s.client.NewRequest(http.MethodGet, "/networks", nil)
 	if err != nil {
@@ -57,6 +58,7 @@ type PageInfo struct {
 }
 
 // ListDexes returns a list of all available dexes on a specific network.
+// Implements the getNetworkDexes operation from the OpenAPI spec.
 func (s *NetworksService) ListDexes(ctx context.Context, networkID string, page, limit int) (*DexesResponse, error) {
 	path := "/networks/" + networkID + "/dexes"
 

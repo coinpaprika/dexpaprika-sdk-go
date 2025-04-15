@@ -20,6 +20,7 @@ type Stats struct {
 }
 
 // GetStats retrieves high-level statistics about the DexPaprika ecosystem.
+// Implements the getStats operation from the OpenAPI spec.
 func (s *UtilsService) GetStats(ctx context.Context) (*Stats, error) {
 	req, err := s.client.NewRequest(http.MethodGet, "/stats", nil)
 	if err != nil {

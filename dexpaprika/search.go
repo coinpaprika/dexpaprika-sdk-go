@@ -33,6 +33,7 @@ type SearchResult struct {
 }
 
 // Search performs a search across tokens, pools, and DEXes.
+// Implements the search operation from the OpenAPI spec.
 func (s *SearchService) Search(ctx context.Context, query string) (*SearchResult, error) {
 	req, err := s.client.NewRequest(http.MethodGet, "/search", nil)
 	if err != nil {

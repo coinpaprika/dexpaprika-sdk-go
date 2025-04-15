@@ -2,11 +2,20 @@
 
 A production-ready Go client for the DexPaprika API, providing access to decentralized exchange (DEX) data across multiple blockchain networks.
 
+## Overview
+
+The DexPaprika API lets you access data on decentralized exchanges across multiple blockchains, including pools, tokens, transactions, and pricing information. This SDK provides a clean, idiomatic Go interface to that API.
+
 ## Installation
 
 ```bash
 go get github.com/donbagger/dexpaprika-sdk-go
 ```
+
+## Requirements
+
+- Go 1.18 or higher
+- No API key required (service is in public beta)
 
 ## Features
 
@@ -19,6 +28,65 @@ go get github.com/donbagger/dexpaprika-sdk-go
   - Caching layer for improved performance
   - Flexible configuration via functional options
 - **Easy to Use**: Simple, intuitive interfaces for working with DEX data
+
+## Getting Started
+
+Here's a quick example to get you started with the SDK:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/donbagger/dexpaprika-sdk-go/dexpaprika"
+)
+
+func main() {
+    // Create a new client
+    client := dexpaprika.NewClient()
+
+    // Create a context with timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    // Get a list of networks (blockchains)
+    networks, err := client.Networks.List(ctx)
+    if err != nil {
+        log.Fatalf("Error fetching networks: %v", err)
+    }
+    fmt.Printf("Available networks: %d\n", len(networks))
+    
+    // Example: Print the first few networks
+    for i, network := range networks {
+        if i >= 3 {
+            break
+        }
+        fmt.Printf("  - %s (%s)\n", network.DisplayName, network.ID)
+    }
+    
+    // Get top trading pools
+    pools, err := client.Pools.List(ctx, &dexpaprika.ListOptions{
+        Limit: 5,
+        OrderBy: "volume_usd",
+        Sort: "desc",
+    })
+    if err != nil {
+        log.Fatalf("Error fetching pools: %v", err)
+    }
+    
+    fmt.Println("\nTop trading pools:")
+    for _, pool := range pools.Pools {
+        fmt.Printf("  - %s on %s (Volume: $%.2f)\n", 
+            pool.DexName, 
+            pool.Chain, 
+            pool.VolumeUSD)
+    }
+}
+```
 
 ## Basic Usage
 
@@ -84,6 +152,8 @@ client := dexpaprika.NewClient(
 
 ## Using Caching
 
+The SDK provides a caching layer to improve performance and reduce API calls:
+
 ```go
 // Create a basic client
 client := dexpaprika.NewClient()
@@ -97,8 +167,12 @@ if err != nil {
     log.Fatalf("Failed to get networks: %v", err)
 }
 
-// Get pools (will be cached)
-pools, err := cachedClient.GetPools(ctx, poolsOpts)
+// Get top pools (will be cached)
+pools, err := cachedClient.GetPools(ctx, &dexpaprika.ListOptions{
+    Limit: 10,
+    OrderBy: "volume_usd",
+    Sort: "desc",
+})
 if err != nil {
     log.Fatalf("Failed to get pools: %v", err)
 }
@@ -108,6 +182,8 @@ networks, err = cachedClient.GetNetworks(ctx)
 ```
 
 ## Pagination Helpers
+
+For endpoints that return large collections, the SDK provides pagination helpers:
 
 ```go
 // Create a pools paginator
@@ -138,6 +214,8 @@ for paginator.HasNextPage() {
 ```
 
 ## Handling Errors
+
+The SDK provides detailed error types to help you handle different failure scenarios:
 
 ```go
 pools, err := client.Pools.List(ctx, poolsOpts)
@@ -233,6 +311,27 @@ results, err := client.Search.Search(ctx, "query")
 // Get global stats
 stats, err := client.Utils.GetStats(ctx)
 ```
+
+## Versioning
+
+This SDK follows [Semantic Versioning](https://semver.org/). 
+
+- **Major version** changes indicate breaking API changes
+- **Minor version** changes add functionality in a backwards-compatible manner
+- **Patch version** changes fix bugs without changing the API
+
+See the [CHANGELOG.md](CHANGELOG.md) file for a detailed version history.
+
+## Resources
+
+- [Official Documentation](https://docs.dexpaprika.com) - Comprehensive API reference
+- [DexPaprika Website](https://dexpaprika.com) - Main product website
+- [CoinPaprika](https://coinpaprika.com) - Related cryptocurrency data platform
+- [Discord Community](https://discord.gg/DhJge5TUGM) - Get support and connect with other developers
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 

@@ -40,10 +40,11 @@ type TokenDetails struct {
 	Explorer    string        `json:"explorer"`
 	AddedAt     string        `json:"added_at"`
 	Summary     *TokenSummary `json:"summary,omitempty"`
-	LastUpdated string        `json:"last_updated"`
+	LastUpdated string        `json:"last_updated"` // RFC3339/ISO8601 date-time format when token data was last updated
 }
 
 // GetDetails returns detailed information about a specific token on a network.
+// Implements the getTokenDetails operation from the OpenAPI spec.
 func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress string) (*TokenDetails, error) {
 	path := fmt.Sprintf("/networks/%s/tokens/%s", networkID, tokenAddress)
 
@@ -62,6 +63,7 @@ func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress 
 }
 
 // GetPools returns a list of top liquidity pools for a specific token on a network.
+// Implements the getTokenPools operation from the OpenAPI spec.
 func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress string, opts *ListOptions, additionalTokenAddress string) (*PoolsResponse, error) {
 	path := fmt.Sprintf("/networks/%s/tokens/%s/pools", networkID, tokenAddress)
 

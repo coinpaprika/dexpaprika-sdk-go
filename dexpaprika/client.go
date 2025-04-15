@@ -1,4 +1,5 @@
 // Package dexpaprika provides a Go client for the DexPaprika API.
+// This SDK is generated based on the DexPaprika OpenAPI 3.1.0 specification.
 package dexpaprika
 
 import (

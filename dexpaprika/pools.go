@@ -83,6 +83,7 @@ func addOptions(s string, opts interface{}) (string, error) {
 }
 
 // List returns a list of top pools from all networks.
+// Implements the getTopPools operation from the OpenAPI spec.
 func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsResponse, error) {
 	path, err := addOptions("/pools", opts)
 	if err != nil {
@@ -104,6 +105,7 @@ func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsRespo
 }
 
 // ListByNetwork returns a list of top pools on a specific network.
+// Implements the getNetworkPools operation from the OpenAPI spec.
 func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts *ListOptions) (*PoolsResponse, error) {
 	path, err := addOptions(fmt.Sprintf("/networks/%s/pools", networkID), opts)
 	if err != nil {
@@ -125,6 +127,7 @@ func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts
 }
 
 // ListByDex returns a list of top pools on a specific network's DEX.
+// Implements the getDexPools operation from the OpenAPI spec.
 func (s *PoolsService) ListByDex(ctx context.Context, networkID, dexID string, opts *ListOptions) (*PoolsResponse, error) {
 	path, err := addOptions(fmt.Sprintf("/networks/%s/dexes/%s/pools", networkID, dexID), opts)
 	if err != nil {
@@ -179,6 +182,7 @@ type PoolDetails struct {
 }
 
 // GetDetails returns details about a specific pool on a network.
+// Implements the getPoolDetails operation from the OpenAPI spec.
 func (s *PoolsService) GetDetails(ctx context.Context, networkID, poolAddress string, inversed bool) (*PoolDetails, error) {
 	path := fmt.Sprintf("/networks/%s/pools/%s", networkID, poolAddress)
 
@@ -223,6 +227,7 @@ type OHLCVOptions struct {
 }
 
 // GetOHLCV returns OHLCV data for a specific pool.
+// Implements the getPoolOHLCV operation from the OpenAPI spec.
 func (s *PoolsService) GetOHLCV(ctx context.Context, networkID, poolAddress string, opts *OHLCVOptions) ([]OHLCVRecord, error) {
 	path := fmt.Sprintf("/networks/%s/pools/%s/ohlcv", networkID, poolAddress)
 
@@ -282,6 +287,7 @@ type TransactionsResponse struct {
 }
 
 // GetTransactions returns transactions of a pool on a network.
+// Implements the getPoolTransactions operation from the OpenAPI spec.
 func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddress string, page, limit int, cursor string) (*TransactionsResponse, error) {
 	path := fmt.Sprintf("/networks/%s/pools/%s/transactions", networkID, poolAddress)
 

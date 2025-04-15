@@ -25,3 +25,10 @@ go.work
 .vscode/
 *.swp
 *.swo 
+
+# OpenAPI files
+openapi_old.yml
+openapi_new.yml
+
+# Documentation
+SDK_UPDATE_INSTRUCTIONS.md 
