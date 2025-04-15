@@ -17,6 +17,32 @@ go get github.com/donbagger/dexpaprika-sdk-go
 - Go 1.18 or higher
 - No API key required (service is in public beta)
 
+## Testing the SDK
+
+The repository includes a comprehensive test executable that verifies all SDK functionality against the live DexPaprika API:
+
+```bash
+# Run the pre-compiled comprehensive test
+./comprehensive
+```
+
+This executable tests all major features including:
+- Networks endpoints
+- Pools endpoints
+- Tokens endpoints
+- Search functionality
+- API statistics
+- Pagination
+- Error handling
+
+You can also rebuild this test executable from source:
+
+```bash
+go build -o comprehensive comprehensive_check.go
+```
+
+Running this test is a quick way to verify the SDK is working correctly in your environment.
+
 ## Features
 
 - **Complete API Coverage**: Access all DexPaprika API endpoints
