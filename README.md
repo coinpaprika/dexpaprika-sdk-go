@@ -359,6 +359,35 @@ See the [CHANGELOG.md](CHANGELOG.md) file for a detailed version history.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Development and Contribution
+
+### Dependency Management
+
+This project uses [Dependabot](https://github.com/features/security) to keep dependencies up to date. Dependabot automatically creates pull requests to update dependencies when new versions are available.
+
+The Dependabot configuration can be found in `.github/dependabot.yml` and includes:
+- Weekly updates for Go modules
+- Weekly updates for GitHub Actions workflows
+- Automatic grouping of minor and patch updates
+
+### Continuous Integration
+
+The project uses GitHub Actions for continuous integration:
+
+1. **Go CI Workflow**: Runs on every push and pull request to main branches
+   - Builds and tests the code on multiple Go versions
+   - Runs linting checks
+   - Generates and uploads code coverage reports
+
+2. **Security Scanning**: Automatically scans for security vulnerabilities
+   - Uses Gosec to identify security issues in the code
+   - Runs govulncheck to check for vulnerabilities in dependencies
+   - Performs dependency review on pull requests
+
+### Code Ownership
+
+The project uses a CODEOWNERS file to automatically request reviews from the appropriate team members when a pull request is opened.
+
 ## License
 
 This project is licensed under the MIT License. 
