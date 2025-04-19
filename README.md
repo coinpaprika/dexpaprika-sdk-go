@@ -9,7 +9,7 @@ The DexPaprika API lets you access data on decentralized exchanges across multip
 ## Installation
 
 ```bash
-go get github.com/donbagger/dexpaprika-sdk-go
+go get github.com/coinpaprika/dexpaprika-sdk-go
 ```
 
 ## Requirements
