@@ -54,10 +54,11 @@ func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress 
 	}
 
 	var response TokenDetails
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }
@@ -93,10 +94,11 @@ func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress st
 	req.URL.RawQuery = q.Encode()
 
 	var response PoolsResponse
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }

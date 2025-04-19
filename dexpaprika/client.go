@@ -282,7 +282,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		select {
 		case <-ctx.Done():
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 			return nil, ctx.Err()
 		default:
@@ -301,7 +301,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 
 		// Read the body
 		respBody, err = io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			if i == c.maxRetries {
 				return nil, &APIError{
@@ -317,7 +317,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			apiErr := createAPIError(resp, respBody)
 
-			// If it's a retryable error and we haven't hit max retries, try again
+			// If it's a retryable error, and we haven't hit max retries, try again
 			if IsRetryable(apiErr) && i < c.maxRetries {
 				continue
 			}
@@ -351,7 +351,7 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 	var errMsg string
 	var err error
 
-	// Try to extract error message from body
+	// Try to extract an error message from body
 	var errorResp struct {
 		Error string `json:"error"`
 	}
