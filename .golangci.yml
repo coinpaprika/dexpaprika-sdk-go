@@ -1,0 +1,92 @@
+version: "2"
+run:
+  concurrency: 4
+  timeout: 10m
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - gosec
+    - bodyclose
+    - durationcheck
+    - errcheck
+    - errorlint
+    - govet
+    - makezero
+    - misspell
+    - nilerr
+    - prealloc
+    - predeclared
+    - reassign
+    - revive
+    - sloglint
+    - staticcheck
+    - unconvert
+    - whitespace
+  settings:
+    gosec:
+      excludes:
+        - G115
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+    revive:
+      max-open-files: 2048
+      severity: error
+      enable-all-rules: false
+      rules:
+        - name: if-return
+          disabled: false
+        - name: identical-branches
+          disabled: false
+        - name: indent-error-flow
+          disabled: false
+        - name: range
+          disabled: false
+        - name: superfluous-else
+          disabled: false
+        - name: atomic
+          disabled: false
+        - name: deep-exit
+          disabled: true
+        - name: errorf
+          disabled: false
+        - name: error-return
+          disabled: false
+        - name: range
+          disabled: false
+        - name: empty-block
+          disabled: false
+        - name: unnecessary-stmt
+          disabled: false
+        - name: redefines-builtin-id
+          disabled: false
+        - name: waitgroup-by-value
+          disabled: false
+        - name: unconditional-recursion
+          disabled: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: (.+)\.go$
+        text: (.*)should have comment(.+)or be unexported|comment(.+)should be of the form
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
