@@ -1,3 +1,5 @@
+[![Check & test & build](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml/badge.svg)](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml) 
+
 # DexPaprika Go SDK
 
 A production-ready Go client for the DexPaprika API, providing access to decentralized exchange (DEX) data across multiple blockchain networks.
