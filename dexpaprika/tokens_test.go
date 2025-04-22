@@ -18,7 +18,8 @@ func TestTokens_GetDetails(t *testing.T) {
 
 	// Test token details for a well-known token (WETH on Ethereum)
 	tokenChain := "ethereum"
-	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH  #nosec G101
+	// #nosec G101
+	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
 
 	// Get token details
 	token, err := client.Tokens.GetDetails(ctx, tokenChain, tokenAddress)
@@ -60,7 +61,8 @@ func TestTokens_GetPools(t *testing.T) {
 
 	// Test token pools for a well-known token (WETH on Ethereum)
 	tokenChain := "ethereum"
-	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH  #nosec G101
+	// #nosec G101
+	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
 
 	// Get pools for the token
 	opts := &ListOptions{
@@ -110,8 +112,10 @@ func TestTokens_GetPoolsWithPair(t *testing.T) {
 
 	// Test token pair pools (WETH-USDC on Ethereum)
 	tokenChain := "ethereum"
-	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"     // WETH  #nosec G101
-	pairTokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // USDC  #nosec G101
+	// #nosec G101
+	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
+	// #nosec G101
+	pairTokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // USDC
 
 	// Get pools for the token pair
 	opts := &ListOptions{
@@ -164,7 +168,8 @@ func TestCachedClient_Tokens(t *testing.T) {
 
 	// Test token details caching
 	tokenChain := "ethereum"
-	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH  #nosec G101
+	// #nosec G101
+	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
 
 	// Get token details
 	token, err := cachedClient.GetTokenDetails(ctx, tokenChain, tokenAddress)
