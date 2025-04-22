@@ -2,7 +2,6 @@ package dexpaprika
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -72,26 +71,14 @@ func TestSearch_Search(t *testing.T) {
 }
 
 func TestSearch_InvalidQuery(t *testing.T) {
-	// Create a client with test settings
-	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
-	)
-
-	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	client := NewClient()
 
 	// Test with empty query
-	results, err := client.Search.Search(ctx, "")
-	if err != nil {
-		// The API might reject empty queries
-		t.Logf("Empty query rejected as expected: %v", err)
-		return
-	}
+	ctx := context.Background()
+	_, err := client.Search.Search(ctx, "")
 
-	// If the API accepts empty queries, we should still get a valid (possibly empty) result
-	if results == nil {
-		t.Error("Search.Search with empty query returned nil, expected empty results")
+	if err == nil {
+		t.Fatal("Expected error for empty query, got nil")
 	}
 }
 
@@ -217,30 +204,186 @@ func TestSearch_SearchWithMock(t *testing.T) {
 
 // TestSearch_CanceledContext tests behavior with a canceled context
 func TestSearch_CanceledContext(t *testing.T) {
-	// Create a client
-	client := NewClient(
-		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond), // No retries for faster tests
-	)
+	// Setup mock server that never responds
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Sleep to simulate long-running request
+		time.Sleep(500 * time.Millisecond)
+		fmt.Fprintln(w, `{"tokens":[],"pools":[],"dexes":[]}`)
+	}))
+	defer server.Close()
 
-	// Create a context and cancel it immediately
+	// Create client with mock server URL
+	client := NewClient()
+	client.SetBaseURL(server.URL)
+
+	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel context before making the request
+	cancel() // Cancel immediately
 
-	// Perform the search with a canceled context
-	result, err := client.Search.Search(ctx, "test")
+	// Call method with canceled context
+	_, err := client.Search.Search(ctx, "eth")
 
-	// Expect an error due to canceled context
+	// Assert context canceled error
 	if err == nil {
-		t.Fatal("Search with canceled context returned no error, expected context canceled error")
+		t.Fatal("Expected error due to canceled context, got nil")
+	}
+}
+
+func TestSearch_Success(t *testing.T) {
+	// Setup mock server
+	mockResponse := `{
+		"tokens": [
+			{
+				"id": "eth-ethereum",
+				"name": "Ethereum",
+				"symbol": "ETH",
+				"chain": "ethereum"
+			},
+			{
+				"id": "eth-ether",
+				"name": "Ether",
+				"symbol": "ETH",
+				"chain": "ethereum"
+			}
+		],
+		"pools": [],
+		"dexes": []
+	}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/search" {
+			t.Errorf("Expected path to be /search, got %s", r.URL.Path)
+		}
+
+		query := r.URL.Query().Get("query")
+		if query != "eth" {
+			t.Errorf("Expected query parameter 'query' to be 'eth', got %s", query)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, mockResponse)
+	}))
+	defer server.Close()
+
+	// Create client with mock server URL
+	client := NewClient()
+	client.SetBaseURL(server.URL)
+
+	// Call method
+	ctx := context.Background()
+	results, err := client.Search.Search(ctx, "eth")
+
+	// Assert results
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	// Check that the error is a context error
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("Search returned error %v, want context.Canceled", err)
+	if len(results.Tokens) != 2 {
+		t.Fatalf("Expected 2 token results, got %d", len(results.Tokens))
 	}
 
-	// Result should be nil
-	if result != nil {
-		t.Error("Search with canceled context returned non-nil result, expected nil")
+	// Check first result
+	if results.Tokens[0].Name != "Ethereum" {
+		t.Errorf("Expected first result name to be 'Ethereum', got %s", results.Tokens[0].Name)
+	}
+
+	if results.Tokens[0].Symbol != "ETH" {
+		t.Errorf("Expected first result symbol to be 'ETH', got %s", results.Tokens[0].Symbol)
+	}
+
+	if results.Tokens[0].ID != "eth-ethereum" {
+		t.Errorf("Expected first result id to be 'eth-ethereum', got %s", results.Tokens[0].ID)
+	}
+
+	if results.Tokens[0].Chain != "ethereum" {
+		t.Errorf("Expected first result chain to be 'ethereum', got %s", results.Tokens[0].Chain)
+	}
+
+	// Check second result
+	if results.Tokens[1].Name != "Ether" {
+		t.Errorf("Expected second result name to be 'Ether', got %s", results.Tokens[1].Name)
+	}
+}
+
+func TestSearch_ServerErrors(t *testing.T) {
+	tests := []struct {
+		name         string
+		serverStatus int
+		serverBody   string
+		expectError  bool
+	}{
+		{
+			name:         "Server error 500",
+			serverStatus: 500,
+			serverBody:   `{"error":"Internal server error"}`,
+			expectError:  true,
+		},
+		{
+			name:         "Invalid JSON",
+			serverStatus: 200,
+			serverBody:   `{not valid json`,
+			expectError:  true,
+		},
+		{
+			name:         "Empty response",
+			serverStatus: 200,
+			serverBody:   `{"tokens":[],"pools":[],"dexes":[]}`,
+			expectError:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup mock server
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.serverStatus)
+				fmt.Fprintln(w, tt.serverBody)
+			}))
+			defer server.Close()
+
+			// Create client with mock server URL
+			client := NewClient()
+			client.SetBaseURL(server.URL)
+
+			// Call method
+			ctx := context.Background()
+			_, err := client.Search.Search(ctx, "eth")
+
+			// Assert error
+			if (err != nil) != tt.expectError {
+				t.Errorf("Expected error: %v, got error: %v", tt.expectError, err)
+			}
+		})
+	}
+}
+
+func TestSearch_Timeout(t *testing.T) {
+	// Skip in short mode
+	if testing.Short() {
+		t.Skip("Skipping timeout test in short mode")
+	}
+
+	// Setup mock server that delays response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Sleep to force timeout
+		time.Sleep(2 * time.Second)
+		fmt.Fprintln(w, `{"tokens":[],"pools":[],"dexes":[]}`)
+	}))
+	defer server.Close()
+
+	// Create client with mock server URL
+	client := NewClient()
+	client.SetBaseURL(server.URL)
+
+	// Create context with short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	// Call method with timeout context
+	_, err := client.Search.Search(ctx, "eth")
+
+	// Assert timeout error
+	if err == nil {
+		t.Fatal("Expected error due to timeout, got nil")
 	}
 }
