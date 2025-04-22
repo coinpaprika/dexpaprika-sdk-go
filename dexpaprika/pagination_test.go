@@ -2,6 +2,7 @@ package dexpaprika
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -47,7 +48,7 @@ func TestPoolsPaginator(t *testing.T) {
 
 	// Verify we got results
 	firstPage := paginator.GetCurrentPage()
-	if firstPage == nil || len(firstPage) == 0 {
+	if len(firstPage) == 0 {
 		t.Fatal("GetCurrentPage() after first fetch returned no pools")
 	}
 
@@ -76,7 +77,7 @@ func TestPoolsPaginator(t *testing.T) {
 		}
 
 		secondPage := paginator.GetCurrentPage()
-		if secondPage == nil || len(secondPage) == 0 {
+		if len(secondPage) == 0 {
 			t.Error("GetCurrentPage() after second fetch returned no pools")
 		}
 
@@ -115,7 +116,7 @@ func TestPoolsPaginator_ForNetwork(t *testing.T) {
 
 	// Verify we got results for the correct network
 	pools := paginator.GetCurrentPage()
-	if pools == nil || len(pools) == 0 {
+	if len(pools) == 0 {
 		t.Fatal("GetCurrentPage() returned no pools")
 	}
 
@@ -162,7 +163,7 @@ func TestDexesPaginator(t *testing.T) {
 
 	// Verify we got results
 	dexes := paginator.GetCurrentPage()
-	if dexes == nil || len(dexes) == 0 {
+	if len(dexes) == 0 {
 		t.Fatal("GetCurrentPage() returned no dexes")
 	}
 
@@ -259,7 +260,7 @@ func TestPoolsPaginator_ForDex(t *testing.T) {
 
 	// Verify we got results
 	pools := paginator.GetCurrentPage()
-	if pools == nil || len(pools) == 0 {
+	if len(pools) == 0 {
 		t.Skip("No pools returned for the dex, cannot fully test")
 	}
 
@@ -306,7 +307,7 @@ func TestPoolsPaginator_ForToken(t *testing.T) {
 
 	// Verify we got results
 	pools := paginator.GetCurrentPage()
-	if pools == nil || len(pools) == 0 {
+	if len(pools) == 0 {
 		t.Fatal("GetCurrentPage() returned no pools")
 	}
 
@@ -373,7 +374,7 @@ func TestTransactionsPaginator_GetErrorWithBadNetwork(t *testing.T) {
 	}
 
 	// Make sure the error matches what we got from GetNextPage
-	if storedErr != err {
+	if !errors.Is(storedErr, err) {
 		t.Errorf("GetError() = %v, want %v", storedErr, err)
 	}
 }

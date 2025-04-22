@@ -332,7 +332,7 @@ func TestClient_Do_HTTPError(t *testing.T) {
 
 			// Perform the request
 			var result interface{}
-			_, err = client.Do(context.Background(), req, &result)
+			resp, err := client.Do(context.Background(), req, &result)
 
 			// Check error
 			if err == nil {
@@ -354,6 +354,11 @@ func TestClient_Do_HTTPError(t *testing.T) {
 			if apiErr.StatusCode != tc.statusCode {
 				t.Errorf("APIError.StatusCode = %d, want %d", apiErr.StatusCode, tc.statusCode)
 			}
+
+			// Ensure response body is closed
+			if resp != nil && resp.Body != nil {
+				defer resp.Body.Close()
+			}
 		})
 	}
 }
@@ -374,7 +379,7 @@ func TestClient_Do_NetworkError(t *testing.T) {
 
 	// Perform the request
 	var result interface{}
-	_, err = client.Do(context.Background(), req, &result)
+	resp, err := client.Do(context.Background(), req, &result)
 
 	// Check error
 	if err == nil {
@@ -390,6 +395,11 @@ func TestClient_Do_NetworkError(t *testing.T) {
 	// Check that it's a network error by examining the error message
 	if !strings.Contains(err.Error(), "network error") {
 		t.Errorf("Do() returned error %v, want network error", err)
+	}
+
+	// Ensure response body is closed
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
 }
 
@@ -431,7 +441,7 @@ func TestClient_Do_RetryOnServerError(t *testing.T) {
 	var result struct {
 		Success bool `json:"success"`
 	}
-	_, err = client.Do(context.Background(), req, &result)
+	resp, err := client.Do(context.Background(), req, &result)
 
 	// Check error
 	if err != nil {
@@ -446,6 +456,11 @@ func TestClient_Do_RetryOnServerError(t *testing.T) {
 	// Check that the request was retried
 	if requestCount != 2 {
 		t.Errorf("Request count = %d, want 2", requestCount)
+	}
+
+	// Ensure response body is closed
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
 }
 
@@ -476,13 +491,18 @@ func TestClient_Do_RateLimit(t *testing.T) {
 	var result struct {
 		Success bool `json:"success"`
 	}
-	_, err = client.Do(context.Background(), req, &result)
+	resp, err := client.Do(context.Background(), req, &result)
 	if err != nil {
 		t.Fatalf("First Do() returned error: %v", err)
 	}
 
+	// Ensure response body is closed
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
 	// Perform the second request
-	_, err = client.Do(context.Background(), req, &result)
+	resp, err = client.Do(context.Background(), req, &result)
 	if err != nil {
 		t.Fatalf("Second Do() returned error: %v", err)
 	}
@@ -492,6 +512,11 @@ func TestClient_Do_RateLimit(t *testing.T) {
 	// The second request should take around 1 second due to rate limiting
 	if duration < 900*time.Millisecond {
 		t.Logf("Second request took %v, which is shorter than expected for rate limiting", duration)
+	}
+
+	// Ensure response body is closed
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
 }
 
@@ -525,7 +550,7 @@ func TestClient_Do_ContextCancellation(t *testing.T) {
 
 	// Perform the request with the canceled context
 	var result interface{}
-	_, err = client.Do(ctx, req, &result)
+	resp, err := client.Do(ctx, req, &result)
 
 	// Check error
 	if err == nil {
@@ -535,6 +560,11 @@ func TestClient_Do_ContextCancellation(t *testing.T) {
 	// Check that the error is a context error
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Do() returned error %v, want context.Canceled", err)
+	}
+
+	// Ensure response body is closed
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
 }
 

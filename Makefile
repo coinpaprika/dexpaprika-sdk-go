@@ -1,4 +1,4 @@
-.PHONY: build run-example test tidy check help
+.PHONY: build run-example test tidy check vuln help
 .DEFAULT_GOAL: all
 
 all: check test build ## Default target: check, test, build
@@ -22,8 +22,17 @@ check: ## Linting and static analysis
 
 	@./bin/golangci-lint run -c .golangci.yml
 
-	@go install golang.org/x/vuln/cmd/govulncheck@latest
-	@govulncheck ./...
+vuln: ## Run vulnerability checks (requires Go 1.24)
+	@echo "Checking Go version for vulnerability scanning..."
+	@go version
+	@if go version | grep -q "go1.24"; then \
+		echo "Go 1.24 detected, running vulnerability check..."; \
+		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+		$(shell go env GOPATH)/bin/govulncheck ./...; \
+	else \
+		echo "Error: Vulnerability check requires Go 1.24+"; \
+		exit 1; \
+	fi
 
 format: ## Format go code with goimports
 	@go install golang.org/x/tools/cmd/goimports@latest

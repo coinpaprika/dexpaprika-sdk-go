@@ -214,7 +214,9 @@ func TestSearch_CanceledContext(t *testing.T) {
 
 	// Create client with mock server URL
 	client := NewClient()
-	client.SetBaseURL(server.URL)
+	if err := client.SetBaseURL(server.URL); err != nil {
+		t.Fatalf("Failed to set base URL: %v", err)
+	}
 
 	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -267,7 +269,9 @@ func TestSearch_Success(t *testing.T) {
 
 	// Create client with mock server URL
 	client := NewClient()
-	client.SetBaseURL(server.URL)
+	if err := client.SetBaseURL(server.URL); err != nil {
+		t.Fatalf("Failed to set base URL: %v", err)
+	}
 
 	// Call method
 	ctx := context.Background()
@@ -343,7 +347,9 @@ func TestSearch_ServerErrors(t *testing.T) {
 
 			// Create client with mock server URL
 			client := NewClient()
-			client.SetBaseURL(server.URL)
+			if err := client.SetBaseURL(server.URL); err != nil {
+				t.Fatalf("Failed to set base URL: %v", err)
+			}
 
 			// Call method
 			ctx := context.Background()
@@ -373,7 +379,9 @@ func TestSearch_Timeout(t *testing.T) {
 
 	// Create client with mock server URL
 	client := NewClient()
-	client.SetBaseURL(server.URL)
+	if err := client.SetBaseURL(server.URL); err != nil {
+		t.Fatalf("Failed to set base URL: %v", err)
+	}
 
 	// Create context with short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)

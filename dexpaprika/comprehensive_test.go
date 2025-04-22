@@ -252,9 +252,12 @@ func testGetNetworks(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get networks: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	networks, ok := resp["networks"].([]interface{})
@@ -270,9 +273,12 @@ func testGetNetworkDexes(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get network dexes: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	dexes, ok := resp["dexes"].([]interface{})
@@ -288,9 +294,12 @@ func testGetTopPools(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get top pools: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	pools, ok := resp["pools"].([]interface{})
@@ -306,9 +315,12 @@ func testGetNetworkPools(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get network pools: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	pools, ok := resp["pools"].([]interface{})
@@ -324,9 +336,12 @@ func testGetDexPools(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get dex pools: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	pools, ok := resp["pools"].([]interface{})
@@ -343,9 +358,12 @@ func testGetPoolDetails(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get pool details: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	id, ok := resp["id"].(string)
@@ -362,9 +380,12 @@ func testGetPoolOHLCV(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp []map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get pool OHLCV: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	if len(resp) != 2 {
@@ -380,9 +401,12 @@ func testGetPoolTransactions(t *testing.T, ctx context.Context, client *Client) 
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get pool transactions: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	transactions, ok := resp["transactions"].([]interface{})
@@ -392,16 +416,19 @@ func testGetPoolTransactions(t *testing.T, ctx context.Context, client *Client) 
 }
 
 func testGetTokenDetails(t *testing.T, ctx context.Context, client *Client) {
-	tokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+	tokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // #nosec G101 - This is a public token address, not a credential
 	req, err := client.NewRequest(http.MethodGet, "/networks/ethereum/tokens/"+tokenAddress, nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get token details: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	id, ok := resp["id"].(string)
@@ -411,16 +438,19 @@ func testGetTokenDetails(t *testing.T, ctx context.Context, client *Client) {
 }
 
 func testGetTokenPools(t *testing.T, ctx context.Context, client *Client) {
-	tokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+	tokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // #nosec G101 - This is a public token address, not a credential
 	req, err := client.NewRequest(http.MethodGet, "/networks/ethereum/tokens/"+tokenAddress+"/pools", nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get token pools: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	pools, ok := resp["pools"].([]interface{})
@@ -436,9 +466,12 @@ func testSearch(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp SearchResult
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to search: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	if len(resp.Tokens) == 0 && len(resp.Pools) == 0 && len(resp.Dexes) == 0 {
@@ -453,9 +486,12 @@ func testGetStats(t *testing.T, ctx context.Context, client *Client) {
 	}
 
 	var resp map[string]interface{}
-	_, err = client.Do(ctx, req, &resp)
+	httpResp, err := client.Do(ctx, req, &resp)
 	if err != nil {
 		t.Fatalf("Failed to get stats: %v", err)
+	}
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
 	}
 
 	chains, ok := resp["chains"].(float64)
@@ -602,5 +638,8 @@ func createPageInfo(totalItems int, page int, itemsOnPage int, itemsPerPage int)
 
 func writeTestJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
