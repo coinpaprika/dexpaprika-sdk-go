@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - staticcheck
+    - gosimple
+    - unused
+    - misspell
+    - errcheck
+    - ineffassign
+    - bodyclose
+    - gocritic
+    - gosec
+    - noctx
+    - revive
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/coinpaprika/dexpaprika-sdk-go
+
+  staticcheck:
+    checks: ["all"]
+
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - checkPrivateReceivers
+          - disableStutteringCheck
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec 
