@@ -7,12 +7,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/donbagger/dexpaprika-sdk-go/dexpaprika"
+	"github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
 )
 
 func main() {
 	fmt.Println("=== DexPaprika SDK Comprehensive Test ===")
-	
+
 	// Create a client with production settings
 	client := dexpaprika.NewClient(
 		dexpaprika.WithRetryConfig(2, 1*time.Second, 3*time.Second),
@@ -118,7 +118,7 @@ func testPools(ctx context.Context, client *dexpaprika.Client) {
 
 	if len(pools.Pools) > 0 {
 		pool := pools.Pools[0]
-		
+
 		// Test pool details
 		fmt.Printf("   - Testing Pools.GetDetails for %s on %s\n", pool.ID, pool.Chain)
 		details, err := client.Pools.GetDetails(ctx, pool.Chain, pool.ID, false)
@@ -156,7 +156,7 @@ func testTokens(ctx context.Context, client *dexpaprika.Client) {
 	// Test token details for a well-known token
 	tokenChain := "ethereum"
 	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
-	
+
 	fmt.Printf("   - Testing Tokens.GetDetails for %s on %s\n", tokenAddress, tokenChain)
 	token, err := client.Tokens.GetDetails(ctx, tokenChain, tokenAddress)
 	if err != nil {
@@ -195,7 +195,7 @@ func testSearch(ctx context.Context, client *dexpaprika.Client) {
 	if err != nil {
 		log.Fatalf("Failed to search: %v", err)
 	}
-	fmt.Printf("   ✓ Search returned %d tokens, %d pools, %d DEXes\n", 
+	fmt.Printf("   ✓ Search returned %d tokens, %d pools, %d DEXes\n",
 		len(results.Tokens), len(results.Pools), len(results.Dexes))
 }
 
@@ -206,7 +206,7 @@ func testUtils(ctx context.Context, client *dexpaprika.Client) {
 	if err != nil {
 		log.Fatalf("Failed to get stats: %v", err)
 	}
-	fmt.Printf("   ✓ Got stats: %d chains, %d factories, %d pools, %d tokens\n", 
+	fmt.Printf("   ✓ Got stats: %d chains, %d factories, %d pools, %d tokens\n",
 		stats.Chains, stats.Factories, stats.Pools, stats.Tokens)
 }
 
@@ -243,7 +243,7 @@ func testPagination(ctx context.Context, client *dexpaprika.Client) {
 	// Test DEX pagination
 	fmt.Println("   - Testing DexesPaginator")
 	dexPaginator := dexpaprika.NewDexesPaginator(client, "ethereum", 5)
-	
+
 	// Get first page
 	if err := dexPaginator.GetNextPage(ctx); err != nil {
 		log.Fatalf("Failed to get first page of DEXes: %v", err)
@@ -258,9 +258,9 @@ func testErrorHandling(ctx context.Context, client *dexpaprika.Client) {
 	if err != nil {
 		var apiErr *dexpaprika.APIError
 		if errors.As(err, &apiErr) {
-			fmt.Printf("   ✓ Received API error as expected: %s (Status: %d)\n", 
+			fmt.Printf("   ✓ Received API error as expected: %s (Status: %d)\n",
 				apiErr.Message, apiErr.StatusCode)
-			
+
 			if errors.Is(err, dexpaprika.ErrNotFound) {
 				fmt.Println("   ✓ Error correctly identified as 'not found'")
 			} else {
@@ -283,4 +283,4 @@ func testErrorHandling(ctx context.Context, client *dexpaprika.Client) {
 	} else {
 		fmt.Println("   ✗ Expected to get an error but got success")
 	}
-} 
+}

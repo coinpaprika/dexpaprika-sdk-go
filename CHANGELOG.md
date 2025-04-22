@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0] - 2025-04-22
+
+### Changed
+- Corrected Dex struct JSON field mapping to match API response format
+- Improved reliability of API tests with proper error handling
+- Enhanced test coverage with more comprehensive assertions
+
+### Added
+- Added proper Go idiomatic tests using the standard testing package
+- Added MIT license
+- Added GitHub Actions workflow for CI/CD
+- Added golangci-lint configuration for code quality
+- Added status badge to README.md for build status
+
+### Fixed
+- Fixed field mappings in Dex struct to correctly parse API responses
+- Fixed OHLCV tests with proper date formatting
+
 ## [1.1.0] - 2025-04-15
 
 ### Changed

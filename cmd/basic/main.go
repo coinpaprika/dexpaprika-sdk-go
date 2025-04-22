@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/donbagger/dexpaprika-sdk-go/dexpaprika"
+	"github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
 )
 
 func main() {

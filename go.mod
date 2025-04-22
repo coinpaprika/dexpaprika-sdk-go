@@ -1,3 +1,3 @@
-module github.com/donbagger/dexpaprika-sdk-go
+module github.com/coinpaprika/dexpaprika-sdk-go
 
 go 1.22

@@ -1,5 +1,7 @@
 # DexPaprika Go SDK
 
+[![Go Tests & Linting](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml/badge.svg)](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml)
+
 A production-ready Go client for the DexPaprika API, providing access to decentralized exchange (DEX) data across multiple blockchain networks.
 
 ## Overview
@@ -9,7 +11,7 @@ The DexPaprika API lets you access data on decentralized exchanges across multip
 ## Installation
 
 ```bash
-go get github.com/donbagger/dexpaprika-sdk-go
+go get github.com/coinpaprika/dexpaprika-sdk-go
 ```
 
 ## Requirements
@@ -68,7 +70,7 @@ import (
     "log"
     "time"
 
-    "github.com/donbagger/dexpaprika-sdk-go/dexpaprika"
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
 )
 
 func main() {
@@ -125,7 +127,7 @@ import (
     "log"
     "time"
 
-    "github.com/donbagger/dexpaprika-sdk-go/dexpaprika"
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
 )
 
 func main() {
