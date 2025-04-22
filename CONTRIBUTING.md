@@ -13,15 +13,6 @@ Thank you for your interest in contributing to the DexPaprika Go SDK! This docum
 Use the Makefile to run tests:
 
 ```bash
-# Run comprehensive tests
-make run-comprehensive
-
-# Run basic tests
-make run-basic
-
-# Run the production example
-make run-example
-
 # Run unit tests
 make test
 ```
@@ -29,16 +20,17 @@ make test
 ## Code Style
 
 - Follow standard Go conventions and best practices
-- Use `gofmt` to format your code
+- Use `goimports` or `make format` to format your code
 - Comments should be complete sentences
 - Add tests for new functionality
 
 ## Pull Request Process
 
 1. Ensure your code passes all tests
-2. Update documentation if necessary
-3. Submit a pull request with a clear description of the changes
-4. Reference any related issues
+2. Run `make lint` to check for linting issues 3
+3. Update documentation if necessary
+4. Submit a pull request with a clear description of the changes
+5. Reference any related issues
 
 ## Reporting Issues
 

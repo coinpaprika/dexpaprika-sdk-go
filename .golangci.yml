@@ -1,41 +1,92 @@
+version: "2"
 run:
-  timeout: 5m
-  tests: true
-
+  concurrency: 4
+  timeout: 10m
 linters:
+  default: none
   enable:
-    - gofmt
-    - goimports
-    - govet
-    - staticcheck
-    - gosimple
-    - unused
-    - misspell
-    - errcheck
-    - ineffassign
-    - bodyclose
-    - gocritic
+    - asciicheck
     - gosec
-    - noctx
+    - bodyclose
+    - durationcheck
+    - errcheck
+    - errorlint
+    - govet
+    - makezero
+    - misspell
+    - nilerr
+    - prealloc
+    - predeclared
+    - reassign
     - revive
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/coinpaprika/dexpaprika-sdk-go
-
-  staticcheck:
-    checks: ["all"]
-
-  revive:
+    - sloglint
+    - staticcheck
+    - unconvert
+    - whitespace
+  settings:
+    gosec:
+      excludes:
+        - G115
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+    revive:
+      max-open-files: 2048
+      severity: error
+      enable-all-rules: false
+      rules:
+        - name: if-return
+          disabled: false
+        - name: identical-branches
+          disabled: false
+        - name: indent-error-flow
+          disabled: false
+        - name: range
+          disabled: false
+        - name: superfluous-else
+          disabled: false
+        - name: atomic
+          disabled: false
+        - name: deep-exit
+          disabled: true
+        - name: errorf
+          disabled: false
+        - name: error-return
+          disabled: false
+        - name: range
+          disabled: false
+        - name: empty-block
+          disabled: false
+        - name: unnecessary-stmt
+          disabled: false
+        - name: redefines-builtin-id
+          disabled: false
+        - name: waitgroup-by-value
+          disabled: false
+        - name: unconditional-recursion
+          disabled: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-        arguments:
-          - checkPrivateReceivers
-          - disableStutteringCheck
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec 
+      - path: (.+)\.go$
+        text: (.*)should have comment(.+)or be unexported|comment(.+)should be of the form
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

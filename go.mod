@@ -1,3 +1,3 @@
 module github.com/coinpaprika/dexpaprika-sdk-go
 
-go 1.22
+go 1.24.2

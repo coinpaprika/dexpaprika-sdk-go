@@ -27,10 +27,11 @@ func (s *NetworksService) List(ctx context.Context) ([]Network, error) {
 	}
 
 	var networks []Network
-	_, err = s.client.Do(ctx, req, &networks)
+	r, err := s.client.Do(ctx, req, &networks)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return networks, nil
 }
@@ -78,10 +79,11 @@ func (s *NetworksService) ListDexes(ctx context.Context, networkID string, page,
 	req.URL.RawQuery = q.Encode()
 
 	var response DexesResponse
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }

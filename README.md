@@ -1,3 +1,5 @@
+[![Check & test & build](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml/badge.svg)](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml) 
+
 # DexPaprika Go SDK
 
 [![Go Tests & Linting](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml/badge.svg)](https://github.com/coinpaprika/dexpaprika-sdk-go/actions/workflows/main.yml)
@@ -16,7 +18,7 @@ go get github.com/coinpaprika/dexpaprika-sdk-go
 
 ## Requirements
 
-- Go 1.18 or higher
+- Go 1.24 or higher
 - No API key required (service is in public beta)
 
 ## Testing the SDK
@@ -25,10 +27,10 @@ The repository includes a comprehensive test executable that verifies all SDK fu
 
 ```bash
 # Run the pre-compiled comprehensive test
-./comprehensive
+make test
 ```
 
-This executable tests all major features including:
+This executable tests all major features, including:
 - Networks endpoints
 - Pools endpoints
 - Tokens endpoints
@@ -37,10 +39,10 @@ This executable tests all major features including:
 - Pagination
 - Error handling
 
-You can also rebuild this test executable from source:
+You can also rebuild this test executable from the source:
 
 ```bash
-go build -o comprehensive comprehensive_check.go
+go build
 ```
 
 Running this test is a quick way to verify the SDK is working correctly in your environment.

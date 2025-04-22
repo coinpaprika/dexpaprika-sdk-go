@@ -60,8 +60,7 @@ type ListOptions struct {
 func addOptions(s string, opts interface{}) (string, error) {
 	v := url.Values{}
 
-	switch o := opts.(type) {
-	case *ListOptions:
+	if o, ok := opts.(*ListOptions); ok {
 		if o.Page > 0 {
 			v.Add("page", fmt.Sprintf("%d", o.Page))
 		}
@@ -96,10 +95,11 @@ func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsRespo
 	}
 
 	var response PoolsResponse
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }
@@ -118,10 +118,11 @@ func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts
 	}
 
 	var response PoolsResponse
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }
@@ -140,10 +141,11 @@ func (s *PoolsService) ListByDex(ctx context.Context, networkID, dexID string, o
 	}
 
 	var response PoolsResponse
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }
@@ -198,10 +200,11 @@ func (s *PoolsService) GetDetails(ctx context.Context, networkID, poolAddress st
 	}
 
 	var response PoolDetails
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }
@@ -257,10 +260,11 @@ func (s *PoolsService) GetOHLCV(ctx context.Context, networkID, poolAddress stri
 	req.URL.RawQuery = q.Encode()
 
 	var response []OHLCVRecord
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return response, nil
 }
@@ -309,10 +313,11 @@ func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddre
 	req.URL.RawQuery = q.Encode()
 
 	var response TransactionsResponse
-	_, err = s.client.Do(ctx, req, &response)
+	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &response, nil
 }

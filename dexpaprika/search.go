@@ -45,10 +45,11 @@ func (s *SearchService) Search(ctx context.Context, query string) (*SearchResult
 	req.URL.RawQuery = q.Encode()
 
 	var result SearchResult
-	_, err = s.client.Do(ctx, req, &result)
+	r, err := s.client.Do(ctx, req, &result)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &result, nil
 }

@@ -28,10 +28,11 @@ func (s *UtilsService) GetStats(ctx context.Context) (*Stats, error) {
 	}
 
 	var stats Stats
-	_, err = s.client.Do(ctx, req, &stats)
+	r, err := s.client.Do(ctx, req, &stats)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &stats, nil
 }

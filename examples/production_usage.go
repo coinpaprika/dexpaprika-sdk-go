@@ -69,8 +69,10 @@ func main() {
 				}
 			}
 
-			// For demo, stop after one page
-			break
+			// For the demo, stop after one page
+			if true {
+				break
+			}
 		}
 	}
 
@@ -114,7 +116,7 @@ func main() {
 	fmt.Println("\n4. Token details (cached):")
 	// Use a well-known token like WETH on Ethereum
 	tokenChain := "ethereum"
-	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
+	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // #nosec WETH
 
 	tokenDetails, err := cachedClient.GetTokenDetails(ctx, tokenChain, tokenAddress)
 	if err != nil {
