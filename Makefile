@@ -19,20 +19,10 @@ check: ## Linting and static analysis
 	@if test ! -e ./bin/golangci-lint; then \
 		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.2/install.sh| sh -s v2.1.2; \
 	fi
-
 	@./bin/golangci-lint run -c .golangci.yml
 
-vuln: ## Run vulnerability checks (requires Go 1.24)
-	@echo "Checking Go version for vulnerability scanning..."
-	@go version
-	@if go version | grep -q "go1.24"; then \
-		echo "Go 1.24 detected, running vulnerability check..."; \
-		go install golang.org/x/vuln/cmd/govulncheck@latest; \
-		$(shell go env GOPATH)/bin/govulncheck ./...; \
-	else \
-		echo "Error: Vulnerability check requires Go 1.24+"; \
-		exit 1; \
-	fi
+	@go install golang.org/x/vuln/cmd/govulncheck@latest
+	@govulncheck ./...
 
 format: ## Format go code with goimports
 	@go install golang.org/x/tools/cmd/goimports@latest
