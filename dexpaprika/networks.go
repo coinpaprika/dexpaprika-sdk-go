@@ -38,7 +38,7 @@ func (s *NetworksService) List(ctx context.Context) ([]Network, error) {
 
 // Dex represents a decentralized exchange.
 type Dex struct {
-	ID       string `json:"id"`
+	ID       string `json:"dex_id"`
 	Name     string `json:"dex_name"`
 	Chain    string `json:"chain"`
 	Protocol string `json:"protocol"`

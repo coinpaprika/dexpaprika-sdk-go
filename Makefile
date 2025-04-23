@@ -1,4 +1,4 @@
-.PHONY: build run-example test tidy check help
+.PHONY: build run-example test tidy check vuln help
 .DEFAULT_GOAL: all
 
 all: check test build ## Default target: check, test, build
@@ -19,7 +19,6 @@ check: ## Linting and static analysis
 	@if test ! -e ./bin/golangci-lint; then \
 		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.2/install.sh| sh -s v2.1.2; \
 	fi
-
 	@./bin/golangci-lint run -c .golangci.yml
 
 	@go install golang.org/x/vuln/cmd/govulncheck@latest

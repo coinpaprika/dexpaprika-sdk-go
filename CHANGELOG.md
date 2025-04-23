@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.2.0] - 2025-04-22
+
+### Changed
+- Corrected Dex struct JSON field mapping to match API response format
+- Improved reliability of API tests with proper error handling
+- Enhanced test coverage from 63.3% to 83.6% with comprehensive test suite
+
+### Added
+- Implemented dual testing strategy with mock-based comprehensive tests and actual API e2e tests
+- Added extensive unit tests for utils, search, cache, and pagination services
+- Added tests for error handling, timeouts, and edge cases
+- Added MIT license
+- Added GitHub Actions workflow for CI/CD
+- Added golangci-lint configuration for code quality
+- Added status badge to README.md for build status
+
+### Fixed
+- Fixed linter errors in search_test.go related to client initialization
+- Fixed method call to client.Tokens.GetPools by adding missing parameter
+- Removed redundant stable_test.go as functionality is covered by other tests
+- Fixed OHLCV tests with proper date formatting
+
 ## [1.1.0] - 2025-04-15
 
 ### Changed
