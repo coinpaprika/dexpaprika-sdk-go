@@ -388,10 +388,6 @@ The project uses GitHub Actions for continuous integration:
    - Runs govulncheck to check for vulnerabilities in dependencies
    - Performs dependency review on pull requests
 
-### Code Ownership
-
-The project uses a CODEOWNERS file to automatically request reviews from the appropriate team members when a pull request is opened.
-
 ## License
 
 This project is licensed under the MIT License. 
