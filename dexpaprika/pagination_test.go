@@ -3,6 +3,7 @@ package dexpaprika
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -14,79 +15,38 @@ func TestPoolsPaginator(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Create a paginator with a small limit to test pagination
-	paginator := NewPoolsPaginator(client, &ListOptions{
-		Limit:   5,
-		Page:    0,
-		OrderBy: "volume_usd",
-		Sort:    "desc",
-	})
+	// Create a paginator with small limit for testing
+	paginator := NewPoolsPaginator(client, &ListOptions{Limit: 5})
 
 	// Test initial state
-	if paginator.currentResp != nil {
-		t.Error("NewPoolsPaginator() initialized with non-nil currentResp")
-	}
-
 	if !paginator.HasNextPage() {
 		t.Error("NewPoolsPaginator().HasNextPage() = false, want true for initial state")
 	}
 
-	// Test GetCurrentPage with no fetched data
 	initialPage := paginator.GetCurrentPage()
 	if initialPage != nil {
 		t.Errorf("GetCurrentPage() before fetching = %v, want nil", initialPage)
 	}
 
-	// Fetch first page
+	// Fetch first page - this should fail since no network ID is specified
 	err := paginator.GetNextPage(ctx)
-	if err != nil {
-		t.Fatalf("GetNextPage() first page error = %v", err)
+	if err == nil {
+		t.Fatal("GetNextPage() should have returned an error when no network ID is specified")
 	}
 
-	// Verify we got results
-	firstPage := paginator.GetCurrentPage()
-	if len(firstPage) == 0 {
-		t.Fatal("GetCurrentPage() after first fetch returned no pools")
+	// Verify we got the expected error about requiring network ID
+	expectedError := "network ID is required for pools pagination"
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error containing %q, got: %v", expectedError, err)
 	}
+	t.Logf("Expected error received: %s", err.Error())
 
-	if len(firstPage) > 5 {
-		t.Errorf("GetCurrentPage() returned %d pools, want <= 5", len(firstPage))
-	}
-
-	// Get the page info for comparison
-	firstPageNum := 0
-	if paginator.currentResp != nil && paginator.currentResp.PageInfo.TotalPages > 0 {
-		firstPageNum = paginator.currentResp.PageInfo.Page
-		t.Logf("First page: %d of %d total pages", firstPageNum, paginator.currentResp.PageInfo.TotalPages)
-	}
-
-	// Only try to fetch a second page if HasNextPage indicates there is one
-	if paginator.HasNextPage() {
-		// Fetch second page
-		err = paginator.GetNextPage(ctx)
-		if err != nil {
-			t.Fatalf("GetNextPage() second page error = %v", err)
-		}
-
-		// Verify page incremented
-		if paginator.currentResp != nil && paginator.currentResp.PageInfo.Page <= firstPageNum {
-			t.Errorf("Second page number = %d, want > %d", paginator.currentResp.PageInfo.Page, firstPageNum)
-		}
-
-		secondPage := paginator.GetCurrentPage()
-		if len(secondPage) == 0 {
-			t.Error("GetCurrentPage() after second fetch returned no pools")
-		}
-
-		// Verify different data between pages
-		if len(firstPage) > 0 && len(secondPage) > 0 && firstPage[0].ID == secondPage[0].ID {
-			t.Error("First and second page contain the same first pool ID, pagination may not be working")
-		}
-	} else {
-		t.Log("No second page available to test")
+	// Verify the error is stored in the paginator
+	if paginator.GetError() == nil {
+		t.Error("Expected paginator to store the error")
 	}
 }
 

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -81,13 +82,25 @@ func TestPoolsService(t *testing.T) {
 		{
 			name: "List",
 			fn: func(t *testing.T, ctx context.Context, client *dexpaprika.Client) {
-				pools, err := client.Pools.List(ctx, poolsOpts)
+				pools, err := client.Pools.List(ctx, poolsOpts) //nolint:staticcheck // Testing deprecated endpoint behavior
+				// Expect a 410 Gone error due to API deprecation
 				if err != nil {
+					var apiErr *dexpaprika.APIError
+					if errors.As(err, &apiErr) {
+						if apiErr.StatusCode == 410 {
+							// This is expected - the endpoint has been deprecated
+							t.Logf("Expected deprecation error received: %s", apiErr.Message)
+							return
+						}
+					}
 					t.Errorf("List() error = %v", err)
 					return
 				}
+				// If we somehow get here without an error, warn but don't fail
 				if pools == nil || len(pools.Pools) == 0 {
 					t.Error("List() returned empty pools list")
+				} else {
+					t.Logf("Warning: List() still works but is deprecated. Returned %d pools", len(pools.Pools))
 				}
 			},
 		},
@@ -96,11 +109,11 @@ func TestPoolsService(t *testing.T) {
 			fn: func(t *testing.T, ctx context.Context, client *dexpaprika.Client) {
 				pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
 				if err != nil {
-					t.Errorf("List() error = %v", err)
+					t.Errorf("ListByNetwork() error = %v", err)
 					return
 				}
 				if len(pools.Pools) <= 0 {
-					t.Errorf("List() returned %d pools list", len(pools.Pools))
+					t.Errorf("ListByNetwork() returned %d pools list", len(pools.Pools))
 				}
 
 				networkPools, err := client.Pools.ListByNetwork(ctx, pools.Pools[0].Chain, poolsOpts)
@@ -116,7 +129,7 @@ func TestPoolsService(t *testing.T) {
 		{
 			name: "GetDetails",
 			fn: func(t *testing.T, ctx context.Context, client *dexpaprika.Client) {
-				pools, err := client.Pools.List(ctx, poolsOpts)
+				pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
 				if err != nil || len(pools.Pools) == 0 {
 					t.Skip("no pools available for testing")
 				}
@@ -135,7 +148,7 @@ func TestPoolsService(t *testing.T) {
 		{
 			name: "GetOHLCV",
 			fn: func(t *testing.T, ctx context.Context, client *dexpaprika.Client) {
-				pools, err := client.Pools.List(ctx, poolsOpts)
+				pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
 				if err != nil || len(pools.Pools) == 0 {
 					t.Skip("no pools available for testing")
 				}
@@ -171,7 +184,6 @@ func TestPoolsService(t *testing.T) {
 
 func TestTokensService(t *testing.T) {
 	ctx, client := setupTest(t)
-	poolsOpts := &dexpaprika.ListOptions{Limit: 5}
 
 	tests := []struct {
 		name string
@@ -200,7 +212,15 @@ func TestTokensService(t *testing.T) {
 				tokenChain := "ethereum"
 				tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // #nosec
 
-				pools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, poolsOpts, "")
+				tokenPoolsOpts := &dexpaprika.TokenPoolsOptions{
+					ListOptions: &dexpaprika.ListOptions{
+						Limit:   5,
+						OrderBy: "volume_usd",
+						Sort:    "desc",
+					},
+				}
+
+				pools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, tokenPoolsOpts)
 				if err != nil {
 					t.Errorf("GetPools() error = %v", err)
 					return

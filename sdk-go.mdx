@@ -1,0 +1,625 @@
+---
+title: 'DexPaprika Go SDK'
+description: 'The official Go client library for the DexPaprika API, providing easy access to decentralized exchange data across multiple blockchain networks'
+---
+
+## Installation
+
+```bash
+go get github.com/coinpaprika/dexpaprika-sdk-go
+```
+
+## Prerequisites
+
+- Go 1.24 or higher
+- Connection to the internet to access the DexPaprika API
+- No API key required (service is in public beta)
+
+## Quick Example: Get Token Price
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
+)
+
+func main() {
+    // Create client
+    client := dexpaprika.NewClient()
+    
+    // Create context with timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    
+    // Get WETH token details on Ethereum
+    token, err := client.Tokens.GetDetails(ctx, "ethereum", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+    if err != nil {
+        log.Fatalf("Error getting token details: %v", err)
+    }
+    
+    fmt.Printf("%s: $%.2f\n", token.Name, token.PriceUSD)
+    // Output: Wrapped Ether: $3245.67
+}
+```
+
+## API Methods Reference
+
+<Note>Parameters marked with an asterisk (*) are required.</Note>
+
+<ResponseField name="Networks" type="category">
+  <Expandable title="methods">
+    ### client.Networks.List(ctx)
+    
+    **Endpoint:** [GET `/networks`](/api-reference/networks/get-a-list-of-available-blockchain-networks)
+    
+    Gets all supported blockchain networks including Ethereum, Solana, etc. 
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    
+    **Returns:** Network IDs, names, and related information. [Response Structure](/api-reference/networks/get-a-list-of-available-blockchain-networks).
+    
+    ```go
+    networks, err := client.Networks.List(ctx)
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="DEXes" type="category">
+  <Expandable title="methods">
+    ### client.Networks.ListDexes(ctx, networkId, options)
+    
+    **Endpoint:** [GET `/networks/{network}/dexes`](/api-reference/dexes/get-a-list-of-available-dexes-on-a-network)
+    
+    Gets all DEXes on a specific network.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network (e.g., 'ethereum', 'solana')
+    - `options` - ListOptions containing pagination parameters:
+      - `Page` - Page number for pagination (starts at 0)
+      - `Limit` - Number of results per page
+    
+    **Returns:** DEX IDs, names, pool counts, and volume information. [Response Structure](/api-reference/dexes/get-a-list-of-available-dexes-on-a-network).
+    
+    ```go
+    options := &dexpaprika.ListOptions{
+        Page: 0,
+        Limit: 10,
+    }
+    dexes, err := client.Networks.ListDexes(ctx, "ethereum", options)
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="Pools" type="category">
+  <Expandable title="methods">
+    ### client.Pools.List(ctx, options)
+    
+    **Endpoint:** [GET `/pools`](/api-reference/pools/get-top-x-pools)
+    
+    Gets top pools across all networks with pagination.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `options` - ListOptions containing pagination and sorting parameters:
+      - `Page` - Page number for pagination (starts at 0)
+      - `Limit` - Number of results per page
+      - `Sort` - Sort direction ('asc' or 'desc')
+      - `OrderBy` - Field to sort by ('volume_usd', 'liquidity_usd', etc.)
+    
+    **Returns:** Paginated list of pool objects with pricing data. [Response Structure](/api-reference/pools/get-top-x-pools).
+    
+    ```go
+    options := &dexpaprika.ListOptions{
+        Limit: 10,
+        OrderBy: "volume_usd",
+        Sort: "desc",
+    }
+    pools, err := client.Pools.List(ctx, options)
+    ```
+    
+    ---
+    
+    ### client.Pools.ListByNetwork(ctx, networkId, options)
+    
+    **Endpoint:** [GET `/networks/{network}/pools`](/api-reference/pools/get-top-x-pools-on-a-network)
+    
+    Gets pools on a specific network with pagination and sorting options.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `options` - ListOptions containing pagination and sorting parameters
+    
+    **Returns:** Paginated list of pools for the given network. [Response Structure](/api-reference/pools/get-top-x-pools-on-a-network).
+    
+    ```go
+    options := &dexpaprika.ListOptions{
+        Limit: 5,
+        OrderBy: "volume_usd",
+        Sort: "desc",
+    }
+    pools, err := client.Pools.ListByNetwork(ctx, "ethereum", options)
+    ```
+    
+    ---
+    
+    ### client.Pools.ListByDex(ctx, networkId, dexId, options)
+    
+    **Endpoint:** [GET `/networks/{network}/dexes/{dex}/pools`](/api-reference/pools/get-top-x-pools-on-a-networks-dex)
+    
+    Gets pools on a specific DEX within a network with pagination.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `dexId`* - ID of the DEX
+    - `options` - ListOptions containing pagination and sorting parameters
+    
+    **Returns:** Paginated list of pools for the specified DEX. [Response Structure](/api-reference/pools/get-top-x-pools-on-a-networks-dex).
+    
+    ```go
+    options := &dexpaprika.ListOptions{
+        Limit: 10,
+        OrderBy: "volume_usd",
+        Sort: "desc",
+    }
+    pools, err := client.Pools.ListByDex(ctx, "ethereum", "uniswap_v2", options)
+    ```
+    
+    ---
+    
+    ### client.Pools.GetDetails(ctx, networkId, poolAddress, options)
+    
+    **Endpoint:** [GET `/networks/{network}/pools/{pool_address}`](/api-reference/pools/get-a-pool-on-a-network)
+    
+    Gets detailed information about a specific pool.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `poolAddress`* - On-chain address of the pool
+    - `options` - PoolDetailOptions containing:
+      - `Inversed` - Whether to invert the price ratio (boolean)
+    
+    **Returns:** Detailed pool information including tokens, volumes, liquidity, and more. [Response Structure](/api-reference/pools/get-a-pool-on-a-network).
+    
+    ```go
+    options := &dexpaprika.PoolDetailOptions{
+        Inversed: false,
+    }
+    poolDetails, err := client.Pools.GetDetails(ctx, "ethereum", "0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", options)
+    ```
+    
+    ---
+    
+    ### client.Pools.GetTransactions(ctx, networkId, poolAddress, options)
+    
+    **Endpoint:** [GET `/networks/{network}/pools/{pool_address}/transactions`](/api-reference/pools/get-transactions-of-a-pool-on-a-network-paging-can-be-used-up-to-100-pages)
+    
+    Gets transaction history for a specific pool with pagination.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `poolAddress`* - On-chain address of the pool
+    - `options` - ListOptions containing pagination parameters
+    
+    **Returns:** List of transactions with details about tokens, amounts, and timestamps. [Response Structure](/api-reference/pools/get-transactions-of-a-pool-on-a-network-paging-can-be-used-up-to-100-pages).
+    
+    ```go
+    options := &dexpaprika.ListOptions{
+        Limit: 20,
+        Page: 0,
+    }
+    transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", options)
+    ```
+    
+    ---
+    
+    ### client.Pools.GetOHLCV(ctx, networkId, poolAddress, options)
+    
+    **Endpoint:** [GET `/networks/{network}/pools/{pool_address}/ohlcv`](/api-reference/pools/get-ohlcv-data-for-a-pool-pair)
+    
+    Gets OHLCV (Open, High, Low, Close, Volume) chart data for a pool.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `poolAddress`* - On-chain address of the pool
+    - `options` - OHLCVOptions containing:
+      - `Start`* - Start time (time.Time or string ISO format)
+      - `End` - End time (optional)
+      - `Limit` - Number of data points to return
+      - `Interval` - Time interval ('1h', '6h', '24h', etc.)
+      - `Inversed` - Whether to invert the price ratio (boolean)
+    
+    **Returns:** Array of OHLCV data points for the specified time range and interval. [Response Structure](/api-reference/pools/get-ohlcv-data-for-a-pool-pair).
+    
+    ```go
+    // Start time 7 days ago
+    startTime := time.Now().AddDate(0, 0, -7)
+    
+    options := &dexpaprika.OHLCVOptions{
+        Start: startTime,
+        Limit: 100,
+        Interval: "1h",
+        Inversed: false,
+    }
+    
+    ohlcv, err := client.Pools.GetOHLCV(ctx, "ethereum", "0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", options)
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="Tokens" type="category">
+  <Expandable title="methods">
+    ### client.Tokens.GetDetails(ctx, networkId, tokenAddress)
+    
+    **Endpoint:** [GET `/networks/{network}/tokens/{token_address}`](/api-reference/tokens/get-a-tokens-latest-data-on-a-network)
+    
+    Gets comprehensive token information.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `tokenAddress`* - Token contract address
+    
+    **Returns:** Token details including price, market cap, volume, and metadata. [Response Structure](/api-reference/tokens/get-a-tokens-latest-data-on-a-network).
+    
+    ```go
+    token, err := client.Tokens.GetDetails(ctx, "ethereum", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+    ```
+    
+    ---
+    
+    ### client.Tokens.GetPools(ctx, networkId, tokenAddress, options, additionalTokenAddress)
+    
+    **Endpoint:** [GET `/networks/{network}/tokens/{token_address}/pools`](/api-reference/tokens/get-top-x-pools-for-a-token)
+    
+    Gets pools containing a specific token.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `networkId`* - ID of the network
+    - `tokenAddress`* - Token contract address
+    - `options` - ListOptions containing pagination and sorting parameters
+    - `additionalTokenAddress` - Optional second token address to filter for pairs with both tokens
+    
+    **Returns:** List of pools where the queried token is found. [Response Structure](/api-reference/tokens/get-top-x-pools-for-a-token).
+    
+    ```go
+    options := &dexpaprika.ListOptions{
+        Limit: 10,
+        Page: 0,
+        OrderBy: "volume_usd",
+        Sort: "desc",
+    }
+    
+    // Get all WETH-USDC pools
+    pools, err := client.Tokens.GetPools(
+        ctx,
+        "ethereum",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH
+        options,
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
+    )
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="Search" type="category">
+  <Expandable title="methods">
+    ### client.Search.Search(ctx, query)
+    
+    **Endpoint:** [GET `/search`](/api-reference/search/search-for-tokens-pools-and-dexes)
+    
+    Searches across tokens, pools, and DEXes using a query string.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    - `query`* - Search query string
+    
+    **Returns:** Matching entities from all categories (tokens, pools, DEXes). [Response Structure](/api-reference/search/search-for-tokens-pools-and-dexes).
+    
+    ```go
+    results, err := client.Search.Search(ctx, "ethereum")
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="Utils" type="category">
+  <Expandable title="methods">
+    ### client.Utils.GetStats(ctx)
+    
+    **Endpoint:** [GET `/stats`](/api-reference/utils/retrieve-high-level-asset-statistics)
+    
+    Gets platform-wide statistics.
+    
+    **Parameters:**
+    - `ctx`* - Context for API request
+    
+    **Returns:** Counts of chains, DEXes, pools, and tokens indexed. [Response Structure](/api-reference/utils/retrieve-high-level-asset-statistics).
+    
+    ```go
+    stats, err := client.Utils.GetStats(ctx)
+    ```
+  </Expandable>
+</ResponseField>
+
+## Complete Example
+
+<Expandable title="example">
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
+)
+
+func main() {
+    // Initialize client
+    client := dexpaprika.NewClient()
+
+    // Create context with timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    // Get Ethereum network details
+    networks, err := client.Networks.List(ctx)
+    if err != nil {
+        log.Fatalf("Error fetching networks: %v", err)
+    }
+
+    var ethereum *dexpaprika.Network
+    for _, network := range networks {
+        if network.ID == "ethereum" {
+            ethereum = &network
+            break
+        }
+    }
+
+    if ethereum == nil {
+        log.Fatal("Ethereum network not found")
+    }
+
+    fmt.Printf("Found %s with %d DEXes\n", ethereum.DisplayName, ethereum.DexesCount)
+
+    // Get WETH token details
+    weth, err := client.Tokens.GetDetails(
+        ctx,
+        "ethereum",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    )
+    if err != nil {
+        log.Fatalf("Error fetching token details: %v", err)
+    }
+    fmt.Printf("%s price: $%.2f\n", weth.Name, weth.PriceUSD)
+
+    // Find WETH/USDC pools
+    options := &dexpaprika.ListOptions{
+        Limit:   5,
+        Page:    0,
+        OrderBy: "volume_usd",
+        Sort:    "desc",
+    }
+    pools, err := client.Tokens.GetPools(
+        ctx,
+        "ethereum",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH
+        options,
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
+    )
+    if err != nil {
+        log.Fatalf("Error fetching pools: %v", err)
+    }
+
+    // Show top pools
+    fmt.Println("Top WETH/USDC pools:")
+    for _, pool := range pools.Pools {
+        fmt.Printf("%s: $%.2f 24h volume\n", pool.DexName, pool.VolumeUSD)
+    }
+}
+```
+</Expandable>
+
+## Advanced Features
+
+### Error Handling
+
+<Expandable title="error handling">
+```go
+import (
+    "context"
+    "errors"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
+)
+
+func handleAPIErrors() {
+    client := dexpaprika.NewClient()
+    ctx := context.Background()
+
+    // Attempt to get a token with an invalid address
+    _, err := client.Tokens.GetDetails(ctx, "ethereum", "0xinvalidaddress")
+    if err != nil {
+        // Check for specific error types
+        var apiErr *dexpaprika.APIError
+        if errors.As(err, &apiErr) {
+            switch apiErr.StatusCode {
+            case 404:
+                fmt.Println("Token not found")
+            case 429:
+                fmt.Println("Rate limit exceeded, retry after a delay")
+            case 500:
+                fmt.Println("Server error, retry may succeed")
+            default:
+                fmt.Printf("API error: %s\n", apiErr.Message)
+            }
+        } else {
+            // Handle non-API errors (like network issues)
+            fmt.Printf("Non-API error: %v\n", err)
+        }
+
+        // Check if error is retryable
+        if dexpaprika.IsRetryable(err) {
+            fmt.Println("This error is retryable")
+        }
+    }
+}
+```
+</Expandable>
+
+### Caching
+
+<Expandable title="caching">
+```go
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
+)
+
+func useCaching() {
+    // Create a regular client
+    client := dexpaprika.NewClient()
+
+    // Create a cached client with 5-minute TTL
+    cachedClient := dexpaprika.NewCachedClient(client, nil, 5*time.Minute)
+
+    // Create context
+    ctx := context.Background()
+
+    // First call - hits the API
+    startTime := time.Now()
+    networks, err := cachedClient.GetNetworks(ctx)
+    if err != nil {
+        fmt.Printf("Error: %v\n", err)
+        return
+    }
+    fmt.Printf("First call (API): %d networks, took %v\n", len(networks), time.Since(startTime))
+
+    // Second call - served from cache (much faster)
+    startTime = time.Now()
+    networks, err = cachedClient.GetNetworks(ctx)
+    if err != nil {
+        fmt.Printf("Error: %v\n", err)
+        return
+    }
+    fmt.Printf("Second call (cached): %d networks, took %v\n", len(networks), time.Since(startTime))
+}
+```
+</Expandable>
+
+### Pagination Helpers
+
+<Expandable title="pagination">
+```go
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
+)
+
+func usePagination() {
+    client := dexpaprika.NewClient()
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+
+    // Create a paginator for Ethereum pools with 50 items per page
+    options := &dexpaprika.ListOptions{
+        Limit:   50,
+        OrderBy: "volume_usd",
+        Sort:    "desc",
+    }
+    paginator := dexpaprika.NewPoolsPaginator(client, options).ForNetwork("ethereum")
+
+    // Count total pools processed
+    totalPools := 0
+
+    // Process first 3 pages (or fewer if there aren't that many)
+    for i := 0; i < 3 && paginator.HasNextPage(); i++ {
+        // Get next page of results
+        if err := paginator.GetNextPage(ctx); err != nil {
+            fmt.Printf("Error getting page: %v\n", err)
+            break
+        }
+
+        // Process current page
+        pools := paginator.GetCurrentPage()
+        totalPools += len(pools)
+
+        // Process first few pools in each page
+        fmt.Printf("=== Page %d ===\n", i+1)
+        for j, pool := range pools {
+            if j >= 3 {
+                fmt.Printf("...and %d more pools\n", len(pools)-3)
+                break
+            }
+            fmt.Printf("%s: $%.2f 24h volume\n", pool.DexName, pool.VolumeUSD)
+        }
+    }
+
+    fmt.Printf("Processed %d pools total\n", totalPools)
+}
+```
+</Expandable>
+
+### Custom Configuration
+
+<Expandable title="configuration">
+```go
+import (
+    "net/http"
+    "time"
+
+    "github.com/coinpaprika/dexpaprika-sdk-go/dexpaprika"
+)
+
+func configureClient() *dexpaprika.Client {
+    // Create a client with custom configuration
+    client := dexpaprika.NewClient(
+        // Custom HTTP client with longer timeout
+        dexpaprika.WithHTTPClient(&http.Client{
+            Timeout: 60 * time.Second,
+        }),
+        
+        // Custom retry configuration (5 retries with backoff)
+        dexpaprika.WithRetryConfig(5, 2*time.Second, 30*time.Second),
+        
+        // Rate limiting to 3 requests per second
+        dexpaprika.WithRateLimit(3.0),
+        
+        // Custom user agent
+        dexpaprika.WithUserAgent("MyApp/1.0 DexPaprikaClient"),
+    )
+
+    return client
+}
+```
+</Expandable>
+
+## Resources
+
+- [GitHub Repository](https://github.com/coinpaprika/dexpaprika-sdk-go)
+- [DexPaprika Website](https://dexpaprika.com)
+- [API Reference](/api-reference/introduction) 

@@ -76,15 +76,16 @@ func main() {
 		}
 	}
 
-	// Example 3: Get top pools with error handling
-	fmt.Println("\n3. Top pools (with error handling):")
+	// Example 3: Get top pools with error handling (using network-specific endpoint)
+	fmt.Println("\n3. Top pools on Ethereum (with error handling):")
 	poolsOpts := &dexpaprika.ListOptions{
 		Limit:   5,
 		OrderBy: "volume_usd",
 		Sort:    "desc",
 	}
 
-	pools, err := client.Pools.List(ctx, poolsOpts)
+	// Use network-specific endpoint instead of deprecated global endpoint
+	pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
 	if err != nil {
 		var apiErr *dexpaprika.APIError
 		if errors.As(err, &apiErr) {
@@ -100,7 +101,7 @@ func main() {
 			fmt.Printf("   Other error: %v\n", err)
 		}
 	} else {
-		fmt.Printf("   Found %d pools\n", len(pools.Pools))
+		fmt.Printf("   Found %d pools on Ethereum\n", len(pools.Pools))
 
 		// Display first pool
 		if len(pools.Pools) > 0 {

@@ -2,6 +2,7 @@ package dexpaprika
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,36 +20,31 @@ func TestPools_List(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Test getting top pools
+	// Test getting top pools - this should now return a 410 Gone error
 	poolsOpts := &ListOptions{
 		Limit:   5,
 		OrderBy: "volume_usd",
 		Sort:    "desc",
 	}
 	pools, err := client.Pools.List(ctx, poolsOpts)
+
+	// Expect a 410 Gone error due to API deprecation
 	if err != nil {
-		t.Fatalf("Pools.List returned error: %v", err)
+		var apiErr *APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.StatusCode == 410 {
+				// This is expected - the endpoint has been deprecated
+				t.Logf("Expected deprecation error received: %s", apiErr.Message)
+				return
+			}
+		}
+		t.Fatalf("Pools.List returned unexpected error: %v", err)
 	}
 
-	if pools == nil {
-		t.Fatal("Pools.List returned nil, expected a PoolList")
-	}
-
-	if len(pools.Pools) == 0 {
-		t.Error("Pools.List returned empty list, expected some pools")
-	}
-
-	// Check basic properties of pools
-	for _, pool := range pools.Pools {
-		if pool.ID == "" {
-			t.Error("Pools.List returned pool with empty ID")
-		}
-		if pool.Chain == "" {
-			t.Error("Pools.List returned pool with empty Chain")
-		}
-		if pool.DexName == "" {
-			t.Error("Pools.List returned pool with empty DexName")
-		}
+	// If we somehow get here without an error, warn but don't fail
+	// (in case the endpoint is temporarily still working)
+	if pools != nil {
+		t.Logf("Warning: Pools.List still works but is deprecated. Returned %d pools", len(pools.Pools))
 	}
 }
 
@@ -527,5 +523,64 @@ func TestPools_GetTransactionsWithMock(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestPools_ValidationErrors(t *testing.T) {
+	client := NewClient()
+	ctx := context.Background()
+
+	// Test ListByNetwork with empty network ID
+	_, err := client.Pools.ListByNetwork(ctx, "", nil)
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test ListByDex with empty network ID
+	_, err = client.Pools.ListByDex(ctx, "", "uniswap_v3", nil)
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test ListByDex with empty dex ID
+	_, err = client.Pools.ListByDex(ctx, "ethereum", "", nil)
+	if err == nil || err.Error() != "dex ID is required" {
+		t.Errorf("Expected 'dex ID is required' error, got: %v", err)
+	}
+
+	// Test GetDetails with empty network ID
+	_, err = client.Pools.GetDetails(ctx, "", "0xpool", false)
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test GetDetails with empty pool address
+	_, err = client.Pools.GetDetails(ctx, "ethereum", "", false)
+	if err == nil || err.Error() != "pool address is required" {
+		t.Errorf("Expected 'pool address is required' error, got: %v", err)
+	}
+
+	// Test GetOHLCV with empty network ID
+	_, err = client.Pools.GetOHLCV(ctx, "", "0xpool", nil)
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test GetOHLCV with empty pool address
+	_, err = client.Pools.GetOHLCV(ctx, "ethereum", "", nil)
+	if err == nil || err.Error() != "pool address is required" {
+		t.Errorf("Expected 'pool address is required' error, got: %v", err)
+	}
+
+	// Test GetTransactions with empty network ID
+	_, err = client.Pools.GetTransactions(ctx, "", "0xpool", 0, 10, "")
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test GetTransactions with empty pool address
+	_, err = client.Pools.GetTransactions(ctx, "ethereum", "", 0, 10, "")
+	if err == nil || err.Error() != "pool address is required" {
+		t.Errorf("Expected 'pool address is required' error, got: %v", err)
 	}
 }

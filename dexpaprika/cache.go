@@ -172,36 +172,11 @@ func (c *CachedClient) GetDexes(ctx context.Context, networkID string, page, lim
 }
 
 // GetPools retrieves pools with caching
+// Deprecated: Use GetNetworkPools(networkID, opts) instead since API v1.3.0
 func (c *CachedClient) GetPools(ctx context.Context, opts *ListOptions) (*PoolsResponse, error) {
-	var optsPage, optsLimit int
-	var optsSort, optsOrderBy string
-
-	if opts != nil {
-		optsPage = opts.Page
-		optsLimit = opts.Limit
-		optsSort = opts.Sort
-		optsOrderBy = opts.OrderBy
-	}
-
-	cacheKey := fmt.Sprintf("pools:%d:%d:%s:%s", optsPage, optsLimit, optsSort, optsOrderBy)
-
-	// Try to get from cache first
-	if cachedValue, found := c.cache.Get(cacheKey); found {
-		if pools, ok := cachedValue.(*PoolsResponse); ok {
-			return pools, nil
-		}
-	}
-
-	// If not in cache or wrong type, fetch from API
-	pools, err := c.client.Pools.List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	// Store in cache
-	c.cache.Set(cacheKey, pools, c.ttl)
-
-	return pools, nil
+	// For backward compatibility, default to ethereum network
+	// This is deprecated and users should use GetNetworkPools instead
+	return c.GetNetworkPools(ctx, "ethereum", opts)
 }
 
 // GetNetworkPools retrieves network pools with caching
@@ -284,18 +259,24 @@ func (c *CachedClient) GetTokenDetails(ctx context.Context, networkID, tokenAddr
 }
 
 // GetTokenPools retrieves token pools with caching
-func (c *CachedClient) GetTokenPools(ctx context.Context, networkID, tokenAddress string, opts *ListOptions, additionalTokenAddress string) (*PoolsResponse, error) {
+func (c *CachedClient) GetTokenPools(ctx context.Context, networkID, tokenAddress string, opts *TokenPoolsOptions) (*PoolsResponse, error) {
 	var optsPage, optsLimit int
 	var optsSort, optsOrderBy string
+	var additionalToken string
+	var reorder bool
 
 	if opts != nil {
-		optsPage = opts.Page
-		optsLimit = opts.Limit
-		optsSort = opts.Sort
-		optsOrderBy = opts.OrderBy
+		if opts.ListOptions != nil {
+			optsPage = opts.Page
+			optsLimit = opts.Limit
+			optsSort = opts.Sort
+			optsOrderBy = opts.OrderBy
+		}
+		additionalToken = opts.AdditionalTokenAddress
+		reorder = opts.Reorder
 	}
 
-	cacheKey := fmt.Sprintf("token_pools:%s:%s:%d:%d:%s:%s:%s", networkID, tokenAddress, optsPage, optsLimit, optsSort, optsOrderBy, additionalTokenAddress)
+	cacheKey := fmt.Sprintf("token_pools:%s:%s:%d:%d:%s:%s:%s:%t", networkID, tokenAddress, optsPage, optsLimit, optsSort, optsOrderBy, additionalToken, reorder)
 
 	// Try to get from cache first
 	if cachedValue, found := c.cache.Get(cacheKey); found {
@@ -305,7 +286,7 @@ func (c *CachedClient) GetTokenPools(ctx context.Context, networkID, tokenAddres
 	}
 
 	// If not in cache or wrong type, fetch from API
-	pools, err := c.client.Tokens.GetPools(ctx, networkID, tokenAddress, opts, additionalTokenAddress)
+	pools, err := c.client.Tokens.GetPools(ctx, networkID, tokenAddress, opts)
 	if err != nil {
 		return nil, err
 	}

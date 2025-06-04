@@ -186,6 +186,7 @@ var (
 	ErrUnauthorized        = errors.New("unauthorized")
 	ErrForbidden           = errors.New("forbidden")
 	ErrNotFound            = errors.New("not found")
+	ErrGone                = errors.New("endpoint has been removed")
 	ErrRateLimit           = errors.New("rate limit exceeded")
 	ErrInternalServerError = errors.New("internal server error")
 	ErrServiceUnavailable  = errors.New("service unavailable")
@@ -353,10 +354,14 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 
 	// Try to extract an error message from body
 	var errorResp struct {
-		Error string `json:"error"`
+		Error   string `json:"error"`
+		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error != "" {
 		errMsg = errorResp.Error
+		if errorResp.Message != "" {
+			errMsg = errMsg + ": " + errorResp.Message
+		}
 	}
 
 	// Map status codes to appropriate errors
@@ -369,6 +374,12 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 		err = ErrForbidden
 	case 404:
 		err = ErrNotFound
+	case 410:
+		err = ErrGone
+		// Provide helpful migration message for deprecated /pools endpoint
+		if errMsg == "" {
+			errMsg = "This endpoint has been deprecated. Please use network-specific endpoints instead.\n\nExamples:\n- client.Pools.ListByNetwork('ethereum', opts)\n- client.Pools.ListByNetwork('solana', opts)\n- client.Pools.ListByNetwork('fantom', opts)\n\nFor more information, visit: https://docs.dexpaprika.com/changelog/changelog"
+		}
 	case 429:
 		err = ErrRateLimit
 	case 500:

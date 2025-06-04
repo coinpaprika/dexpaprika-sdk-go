@@ -387,14 +387,16 @@ func TestCachedClient_GetTokenPools(t *testing.T) {
 	networkID := "ethereum"
 	// #nosec G101
 	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
-	opts := &ListOptions{
-		Limit:   5,
-		OrderBy: "volume_usd",
-		Sort:    "desc",
+	tokenPoolsOpts := &TokenPoolsOptions{
+		ListOptions: &ListOptions{
+			Limit:   5,
+			OrderBy: "volume_usd",
+			Sort:    "desc",
+		},
 	}
 
 	// First call should hit the API
-	pools1, err := cachedClient.GetTokenPools(ctx, networkID, tokenAddress, opts, "")
+	pools1, err := cachedClient.GetTokenPools(ctx, networkID, tokenAddress, tokenPoolsOpts)
 	if err != nil {
 		t.Fatalf("GetTokenPools() first call error = %v", err)
 	}
@@ -405,7 +407,7 @@ func TestCachedClient_GetTokenPools(t *testing.T) {
 
 	// Second call should hit the cache
 	startTime := time.Now()
-	pools2, err := cachedClient.GetTokenPools(ctx, networkID, tokenAddress, opts, "")
+	pools2, err := cachedClient.GetTokenPools(ctx, networkID, tokenAddress, tokenPoolsOpts)
 	duration := time.Since(startTime)
 	if err != nil {
 		t.Fatalf("GetTokenPools() second call error = %v", err)
