@@ -46,6 +46,13 @@ type TokenDetails struct {
 // GetDetails returns detailed information about a specific token on a network.
 // Implements the getTokenDetails operation from the OpenAPI spec.
 func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress string) (*TokenDetails, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if tokenAddress == "" {
+		return nil, fmt.Errorf("token address is required")
+	}
+
 	path := fmt.Sprintf("/networks/%s/tokens/%s", networkID, tokenAddress)
 
 	req, err := s.client.NewRequest(http.MethodGet, path, nil)
@@ -63,9 +70,25 @@ func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress 
 	return &response, nil
 }
 
+// TokenPoolsOptions contains options for retrieving token pools.
+type TokenPoolsOptions struct {
+	*ListOptions
+	// AdditionalTokenAddress filters pools that contain this additional token address
+	AdditionalTokenAddress string
+	// Reorder reorders the pool so that the specified token becomes the primary token for all metrics
+	Reorder bool
+}
+
 // GetPools returns a list of top liquidity pools for a specific token on a network.
 // Implements the getTokenPools operation from the OpenAPI spec.
-func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress string, opts *ListOptions, additionalTokenAddress string) (*PoolsResponse, error) {
+func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress string, opts *TokenPoolsOptions) (*PoolsResponse, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if tokenAddress == "" {
+		return nil, fmt.Errorf("token address is required")
+	}
+
 	path := fmt.Sprintf("/networks/%s/tokens/%s/pools", networkID, tokenAddress)
 
 	req, err := s.client.NewRequest(http.MethodGet, path, nil)
@@ -75,21 +98,31 @@ func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress st
 
 	q := req.URL.Query()
 	if opts != nil {
-		if opts.Page > 0 {
-			q.Add("page", fmt.Sprintf("%d", opts.Page))
+		if opts.ListOptions != nil {
+			if opts.Page > 0 {
+				q.Add("page", fmt.Sprintf("%d", opts.Page))
+			}
+			if opts.Limit > 0 {
+				// Validate limit constraints (max 100 as per API v1.3.0)
+				limit := opts.Limit
+				if limit > 100 {
+					limit = 100
+				}
+				q.Add("limit", fmt.Sprintf("%d", limit))
+			}
+			if opts.Sort != "" {
+				q.Add("sort", opts.Sort)
+			}
+			if opts.OrderBy != "" {
+				q.Add("order_by", opts.OrderBy)
+			}
 		}
-		if opts.Limit > 0 {
-			q.Add("limit", fmt.Sprintf("%d", opts.Limit))
+		if opts.AdditionalTokenAddress != "" {
+			q.Add("address", opts.AdditionalTokenAddress)
 		}
-		if opts.Sort != "" {
-			q.Add("sort", opts.Sort)
+		if opts.Reorder {
+			q.Add("reorder", "true")
 		}
-		if opts.OrderBy != "" {
-			q.Add("order_by", opts.OrderBy)
-		}
-	}
-	if additionalTokenAddress != "" {
-		q.Add("address", additionalTokenAddress)
 	}
 	req.URL.RawQuery = q.Encode()
 

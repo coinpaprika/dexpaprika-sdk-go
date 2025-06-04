@@ -97,8 +97,12 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 
 	// Determine which API endpoint to call based on the set parameters
 	if p.tokenID != "" {
-		// Token pools
-		resp, err = p.client.Tokens.GetPools(ctx, p.networkID, p.tokenID, p.options, p.secondToken)
+		// Token pools - use new TokenPoolsOptions struct
+		tokenOpts := &TokenPoolsOptions{
+			ListOptions:            p.options,
+			AdditionalTokenAddress: p.secondToken,
+		}
+		resp, err = p.client.Tokens.GetPools(ctx, p.networkID, p.tokenID, tokenOpts)
 	} else if p.dexID != "" {
 		// DEX pools
 		resp, err = p.client.Pools.ListByDex(ctx, p.networkID, p.dexID, p.options)
@@ -106,8 +110,9 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 		// Network pools
 		resp, err = p.client.Pools.ListByNetwork(ctx, p.networkID, p.options)
 	} else {
-		// All pools
-		resp, err = p.client.Pools.List(ctx, p.options)
+		// No network specified - this was using the deprecated global endpoint
+		// Return an error to guide users to use network-specific pagination
+		err = fmt.Errorf("network ID is required for pools pagination. Use ForNetwork(networkID) to specify a network")
 	}
 
 	if err != nil {

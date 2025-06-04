@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.3.0] - 2025-01-27
+
+### Breaking Changes
+- **DEPRECATED**: `Pools.List()` method due to API endpoint removal (returns 410 Gone)
+- **REQUIRED**: All pool operations now require network parameter
+- **MIGRATION**: Update `client.Pools.List(ctx, opts)` calls to `client.Pools.ListByNetwork(ctx, network, opts)`
+- **API CHANGE**: Updated to DexPaprika API v1.3.0 with network-specific endpoints
+
+### Added
+- Network parameter validation for all pool and token methods
+- Improved error handling for 410 Gone responses with migration guidance
+- Support for new token pools parameters: `reorder` and `address` filtering
+- Enhanced parameter validation with automatic limit constraints (max 100 for most endpoints, max 366 for OHLCV)
+- New `TokenPoolsOptions` struct for better token pool configuration
+- Comprehensive validation tests for all new parameter requirements
+
+### Changed
+- `Tokens.GetPools()` method signature updated to use `TokenPoolsOptions` struct
+- All network-related methods now validate network ID parameter
+- All pool-related methods now validate pool address parameter
+- Limit parameters automatically capped at API maximums (100 for pools, 366 for OHLCV)
+- Enhanced error messages for deprecated endpoints with migration examples
+
+### Migration Guide
+```go
+// Before (deprecated):
+pools, err := client.Pools.List(ctx, &dexpaprika.ListOptions{Limit: 10})
+
+// After (required):
+pools, err := client.Pools.ListByNetwork(ctx, "ethereum", &dexpaprika.ListOptions{Limit: 10})
+pools, err := client.Pools.ListByNetwork(ctx, "solana", &dexpaprika.ListOptions{Limit: 10})
+
+// Token pools before:
+pools, err := client.Tokens.GetPools(ctx, network, token, opts, additionalToken)
+
+// Token pools after:
+pools, err := client.Tokens.GetPools(ctx, network, token, &dexpaprika.TokenPoolsOptions{
+    ListOptions: opts,
+    AdditionalTokenAddress: additionalToken,
+    Reorder: false,
+})
+```
+
 ## [1.2.0] - 2025-04-22
 
 ### Changed

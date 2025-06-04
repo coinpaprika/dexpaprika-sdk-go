@@ -56,6 +56,22 @@ type ListOptions struct {
 	OrderBy string
 }
 
+// validateNetworkID validates that a network ID is not empty
+func validateNetworkID(networkID string) error {
+	if networkID == "" {
+		return fmt.Errorf("network ID is required")
+	}
+	return nil
+}
+
+// validatePoolAddress validates that a pool address is not empty
+func validatePoolAddress(poolAddress string) error {
+	if poolAddress == "" {
+		return fmt.Errorf("pool address is required")
+	}
+	return nil
+}
+
 // addOptions adds the parameters in opts as URL query parameters to s.
 func addOptions(s string, opts interface{}) (string, error) {
 	v := url.Values{}
@@ -65,7 +81,12 @@ func addOptions(s string, opts interface{}) (string, error) {
 			v.Add("page", fmt.Sprintf("%d", o.Page))
 		}
 		if o.Limit > 0 {
-			v.Add("limit", fmt.Sprintf("%d", o.Limit))
+			// Validate limit constraints (max 100 as per API v1.3.0)
+			limit := o.Limit
+			if limit > 100 {
+				limit = 100
+			}
+			v.Add("limit", fmt.Sprintf("%d", limit))
 		}
 		if o.Sort != "" {
 			v.Add("sort", o.Sort)
@@ -82,7 +103,18 @@ func addOptions(s string, opts interface{}) (string, error) {
 }
 
 // List returns a list of top pools from all networks.
-// Implements the getTopPools operation from the OpenAPI spec.
+//
+// Deprecated: This method calls the deprecated /pools endpoint which has been removed in API v1.3.0.
+// Use ListByNetwork(networkID, opts) instead to get pools from a specific network.
+//
+// Example migration:
+//
+//	// Old (deprecated):
+//	pools, err := client.Pools.List(ctx, opts)
+//
+//	// New (required):
+//	pools, err := client.Pools.ListByNetwork(ctx, "ethereum", opts)
+//	pools, err := client.Pools.ListByNetwork(ctx, "solana", opts)
 func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsResponse, error) {
 	path, err := addOptions("/pools", opts)
 	if err != nil {
@@ -106,7 +138,14 @@ func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsRespo
 
 // ListByNetwork returns a list of top pools on a specific network.
 // Implements the getNetworkPools operation from the OpenAPI spec.
+//
+// This is the recommended method to retrieve pools since API v1.3.0.
+// The global List() method has been deprecated.
 func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts *ListOptions) (*PoolsResponse, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+
 	path, err := addOptions(fmt.Sprintf("/networks/%s/pools", networkID), opts)
 	if err != nil {
 		return nil, err
@@ -130,6 +169,13 @@ func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts
 // ListByDex returns a list of top pools on a specific network's DEX.
 // Implements the getDexPools operation from the OpenAPI spec.
 func (s *PoolsService) ListByDex(ctx context.Context, networkID, dexID string, opts *ListOptions) (*PoolsResponse, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if dexID == "" {
+		return nil, fmt.Errorf("dex ID is required")
+	}
+
 	path, err := addOptions(fmt.Sprintf("/networks/%s/dexes/%s/pools", networkID, dexID), opts)
 	if err != nil {
 		return nil, err
@@ -186,6 +232,13 @@ type PoolDetails struct {
 // GetDetails returns details about a specific pool on a network.
 // Implements the getPoolDetails operation from the OpenAPI spec.
 func (s *PoolsService) GetDetails(ctx context.Context, networkID, poolAddress string, inversed bool) (*PoolDetails, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if err := validatePoolAddress(poolAddress); err != nil {
+		return nil, err
+	}
+
 	path := fmt.Sprintf("/networks/%s/pools/%s", networkID, poolAddress)
 
 	req, err := s.client.NewRequest(http.MethodGet, path, nil)
@@ -232,6 +285,13 @@ type OHLCVOptions struct {
 // GetOHLCV returns OHLCV data for a specific pool.
 // Implements the getPoolOHLCV operation from the OpenAPI spec.
 func (s *PoolsService) GetOHLCV(ctx context.Context, networkID, poolAddress string, opts *OHLCVOptions) ([]OHLCVRecord, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if err := validatePoolAddress(poolAddress); err != nil {
+		return nil, err
+	}
+
 	path := fmt.Sprintf("/networks/%s/pools/%s/ohlcv", networkID, poolAddress)
 
 	req, err := s.client.NewRequest(http.MethodGet, path, nil)
@@ -248,7 +308,12 @@ func (s *PoolsService) GetOHLCV(ctx context.Context, networkID, poolAddress stri
 			q.Add("end", opts.End)
 		}
 		if opts.Limit > 0 {
-			q.Add("limit", fmt.Sprintf("%d", opts.Limit))
+			// Validate OHLCV limit constraints (max 366)
+			limit := opts.Limit
+			if limit > 366 {
+				limit = 366
+			}
+			q.Add("limit", fmt.Sprintf("%d", limit))
 		}
 		if opts.Interval != "" {
 			q.Add("interval", opts.Interval)
@@ -293,6 +358,13 @@ type TransactionsResponse struct {
 // GetTransactions returns transactions of a pool on a network.
 // Implements the getPoolTransactions operation from the OpenAPI spec.
 func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddress string, page, limit int, cursor string) (*TransactionsResponse, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if err := validatePoolAddress(poolAddress); err != nil {
+		return nil, err
+	}
+
 	path := fmt.Sprintf("/networks/%s/pools/%s/transactions", networkID, poolAddress)
 
 	req, err := s.client.NewRequest(http.MethodGet, path, nil)
@@ -305,6 +377,10 @@ func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddre
 		q.Add("page", fmt.Sprintf("%d", page))
 	}
 	if limit > 0 {
+		// Validate limit constraints (max 100 as per API v1.3.0)
+		if limit > 100 {
+			limit = 100
+		}
 		q.Add("limit", fmt.Sprintf("%d", limit))
 	}
 	if cursor != "" {

@@ -65,13 +65,15 @@ func TestTokens_GetPools(t *testing.T) {
 	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
 
 	// Get pools for the token
-	opts := &ListOptions{
-		Limit:   5,
-		OrderBy: "volume_usd",
-		Sort:    "desc",
+	opts := &TokenPoolsOptions{
+		ListOptions: &ListOptions{
+			Limit:   5,
+			OrderBy: "volume_usd",
+			Sort:    "desc",
+		},
 	}
 
-	tokenPools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, opts, "")
+	tokenPools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, opts)
 	if err != nil {
 		t.Fatalf("Tokens.GetPools returned error: %v", err)
 	}
@@ -118,13 +120,16 @@ func TestTokens_GetPoolsWithPair(t *testing.T) {
 	pairTokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // USDC
 
 	// Get pools for the token pair
-	opts := &ListOptions{
-		Limit:   5,
-		OrderBy: "volume_usd",
-		Sort:    "desc",
+	opts := &TokenPoolsOptions{
+		ListOptions: &ListOptions{
+			Limit:   5,
+			OrderBy: "volume_usd",
+			Sort:    "desc",
+		},
+		AdditionalTokenAddress: pairTokenAddress,
 	}
 
-	pairPools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, opts, pairTokenAddress)
+	pairPools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, opts)
 	if err != nil {
 		t.Fatalf("Tokens.GetPools (with pair) returned error: %v", err)
 	}
@@ -197,5 +202,34 @@ func TestCachedClient_Tokens(t *testing.T) {
 	// Same token should be returned
 	if tokenAgain.ID != token.ID || tokenAgain.Symbol != token.Symbol {
 		t.Error("Cache inconsistency: token details changed between calls")
+	}
+}
+
+func TestTokens_ValidationErrors(t *testing.T) {
+	client := NewClient()
+	ctx := context.Background()
+
+	// Test GetDetails with empty network ID
+	_, err := client.Tokens.GetDetails(ctx, "", "0xtoken")
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test GetDetails with empty token address
+	_, err = client.Tokens.GetDetails(ctx, "ethereum", "")
+	if err == nil || err.Error() != "token address is required" {
+		t.Errorf("Expected 'token address is required' error, got: %v", err)
+	}
+
+	// Test GetPools with empty network ID
+	_, err = client.Tokens.GetPools(ctx, "", "0xtoken", nil)
+	if err == nil || err.Error() != "network ID is required" {
+		t.Errorf("Expected 'network ID is required' error, got: %v", err)
+	}
+
+	// Test GetPools with empty token address
+	_, err = client.Tokens.GetPools(ctx, "ethereum", "", nil)
+	if err == nil || err.Error() != "token address is required" {
+		t.Errorf("Expected 'token address is required' error, got: %v", err)
 	}
 }

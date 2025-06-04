@@ -98,17 +98,19 @@ func main() {
         fmt.Printf("  - %s (%s)\n", network.DisplayName, network.ID)
     }
     
-    // Get top trading pools
-    pools, err := client.Pools.List(ctx, &dexpaprika.ListOptions{
-        Limit: 5,
+    // Get top trading pools from Ethereum network
+    // Note: The global Pools.List() method has been deprecated in API v1.3.0
+    // Use ListByNetwork() for specific networks instead
+    pools, err := client.Pools.ListByNetwork(ctx, "ethereum", &dexpaprika.ListOptions{
+        Limit:   5,
         OrderBy: "volume_usd",
-        Sort: "desc",
+        Sort:    "desc",
     })
     if err != nil {
         log.Fatalf("Error fetching pools: %v", err)
     }
     
-    fmt.Println("\nTop trading pools:")
+    fmt.Println("\nTop trading pools on Ethereum:")
     for _, pool := range pools.Pools {
         fmt.Printf("  - %s on %s (Volume: $%.2f)\n", 
             pool.DexName, 
@@ -140,25 +142,19 @@ func main() {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
-    // Get a list of all supported networks
-    networks, err := client.Networks.List(ctx)
-    if err != nil {
-        log.Fatalf("Failed to get networks: %v", err)
-    }
-    fmt.Printf("Found %d supported networks\n", len(networks))
-
-    // Get top pools with pagination
+    // Get top pools with pagination from Ethereum network
+    // Note: Global pools endpoint deprecated in API v1.3.0
     poolsOpts := &dexpaprika.ListOptions{
         Limit:   10,
         Page:    0,
         OrderBy: "volume_usd",
         Sort:    "desc",
     }
-    pools, err := client.Pools.List(ctx, poolsOpts)
+    pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
     if err != nil {
         log.Fatalf("Failed to get pools: %v", err)
     }
-    fmt.Printf("Found %d pools\n", len(pools.Pools))
+    fmt.Printf("Found %d pools on Ethereum\n", len(pools.Pools))
 }
 ```
 
@@ -248,7 +244,8 @@ for paginator.HasNextPage() {
 The SDK provides detailed error types to help you handle different failure scenarios:
 
 ```go
-pools, err := client.Pools.List(ctx, poolsOpts)
+// Use network-specific endpoint
+pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
 if err != nil {
     var apiErr *dexpaprika.APIError
     
@@ -264,6 +261,10 @@ if err != nil {
             fmt.Println("Rate limit exceeded, try again later")
         } else if errors.Is(err, dexpaprika.ErrNotFound) {
             fmt.Println("Resource not found")
+        } else if errors.Is(err, dexpaprika.ErrGone) {
+            fmt.Println("This endpoint has been deprecated")
+            // The error message will contain migration guidance
+            fmt.Println(apiErr.Message)
         }
     } else {
         fmt.Printf("Other error: %v\n", err)
@@ -287,15 +288,16 @@ dexes, err := client.Networks.ListDexes(ctx, "ethereum", 0, 10)
 ### Pools
 
 ```go
-// Get top pools from all networks
-pools, err := client.Pools.List(ctx, &dexpaprika.ListOptions{
+// DEPRECATED: Global pools method has been removed in API v1.3.0
+// pools, err := client.Pools.List(ctx, opts) // This will return 410 Gone
+
+// Use network-specific endpoints instead:
+// Get pools on a specific network
+networkPools, err := client.Pools.ListByNetwork(ctx, "ethereum", &dexpaprika.ListOptions{
     Limit:   10,
     OrderBy: "volume_usd",
     Sort:    "desc",
 })
-
-// Get pools on a specific network
-networkPools, err := client.Pools.ListByNetwork(ctx, "ethereum", opts)
 
 // Get pools on a specific DEX
 dexPools, err := client.Pools.ListByDex(ctx, "ethereum", "uniswap_v3", opts)
@@ -322,10 +324,24 @@ transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xpool_addre
 tokenDetails, err := client.Tokens.GetDetails(ctx, "ethereum", "0xtoken_address")
 
 // Get pools that contain a specific token
-tokenPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken_address", opts, "")
+tokenPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken_address", &dexpaprika.TokenPoolsOptions{
+    ListOptions: &dexpaprika.ListOptions{
+        Limit:   10,
+        OrderBy: "volume_usd",
+        Sort:    "desc",
+    },
+})
 
-// Get pools that contain a pair of tokens
-pairPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken1_address", opts, "0xtoken2_address")
+// Get pools that contain a pair of tokens with reordering
+pairPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken1_address", &dexpaprika.TokenPoolsOptions{
+    ListOptions: &dexpaprika.ListOptions{
+        Limit:   10,
+        OrderBy: "volume_usd",
+        Sort:    "desc",
+    },
+    AdditionalTokenAddress: "0xtoken2_address",
+    Reorder: true,
+})
 ```
 
 ### Search
