@@ -1,4 +1,4 @@
-.PHONY: build run-example test tidy check vuln help
+.PHONY: build run-example test tidy check vuln hooks help
 .DEFAULT_GOAL: all
 
 all: check test build ## Default target: check, test, build
@@ -27,6 +27,9 @@ check: ## Linting and static analysis
 format: ## Format go code with goimports
 	@go install golang.org/x/tools/cmd/goimports@latest
 	@goimports -l -w .
+
+hooks: ## Install git hooks (pre-commit, pre-push)
+	@./hooks/setup.sh
 
 help: ## Show help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

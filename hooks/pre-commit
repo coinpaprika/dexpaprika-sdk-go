@@ -1,0 +1,40 @@
+#!/bin/bash
+# Pre-commit hook for dexpaprika-sdk-go
+# This hook runs formatting checks and linting before allowing a commit
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# Get GOPATH and construct path to goimports
+GOPATH=$(go env GOPATH)
+GOIMPORTS="$GOPATH/bin/goimports"
+
+# Check if goimports is installed
+if [ ! -f "$GOIMPORTS" ]; then
+    echo "Installing goimports..."
+    go install golang.org/x/tools/cmd/goimports@latest
+fi
+
+# Check formatting
+echo "Checking code formatting..."
+UNFORMATTED=$($GOIMPORTS -l .)
+if [ -n "$UNFORMATTED" ]; then
+    echo "❌ The following files are not properly formatted:"
+    echo "$UNFORMATTED"
+    echo ""
+    echo "Please run 'make format' to fix formatting issues."
+    exit 1
+fi
+
+# Run golangci-lint if available
+if [ -f ./bin/golangci-lint ]; then
+    echo "Running golangci-lint..."
+    ./bin/golangci-lint run -c .golangci.yml
+else
+    echo "⚠️  golangci-lint not found. Run 'make check' to install it."
+    echo "Skipping linting checks..."
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0

@@ -1,0 +1,17 @@
+#!/bin/bash
+# Pre-push hook for dexpaprika-sdk-go
+# This hook runs tests before allowing a push
+
+set -e
+
+echo "Running pre-push checks..."
+
+# Run tests
+echo "Running tests..."
+if ! go test -shuffle=on -race ./...; then
+    echo "❌ Tests failed. Please fix the tests before pushing."
+    exit 1
+fi
+
+echo "✅ Pre-push checks passed!"
+exit 0
