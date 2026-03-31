@@ -105,7 +105,7 @@ func TestAllEndpoints(t *testing.T) {
 		case "/networks/ethereum/pools/0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc/transactions":
 			writeTestJSON(w, map[string]interface{}{
 				"transactions": []map[string]interface{}{
-					{
+					{ //nolint:gosec // test data, not credentials
 						"id":                      "0x1234567890abcdef1234567890abcdef",
 						"log_index":               0,
 						"transaction_index":       5,

@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.0] - 2026-03-31
+
+### Added
+- **Pool filtering**: `Pools.Filter()` method for advanced pool filtering by volume, liquidity, transactions, and creation date
+- **Top tokens**: `Tokens.GetTop()` method for discovering top tokens on a network ranked by volume, price, liquidity, or other metrics
+- **Token filtering**: `Tokens.Filter()` method for filtering tokens by volume, liquidity, FDV, transactions, and creation date
+- **Batch prices**: `Tokens.GetMultiPrices()` method for getting prices of up to 10 tokens in a single request
+- New types: `PoolFilterOptions`, `PoolFilterResponse`, `TopToken`, `TopTokenTimeMetrics`, `TopTokensResponse`, `TopTokensOptions`, `FilteredToken`, `TokenFilterResponse`, `TokenFilterOptions`, `TokenPrice`
+- Extended `Token` struct with `TotalSupply`, `Description`, `Website`, `Type`, `Status`, `HasImage` fields
+- Extended `Pool` struct with `VolumeUSD7d`, `LiquidityUSD` fields
+- Test coverage for all new endpoints
+
+### Changed
+- Pool price change fields (`LastPriceChangeUSD5m/1h/24h`, `Fee`) are now pointer types to handle null API responses
+- Updated SDK version to 1.4.0
+
 ## [1.3.0] - 2025-01-27
 
 ### Breaking Changes

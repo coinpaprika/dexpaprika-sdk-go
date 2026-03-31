@@ -15,31 +15,39 @@ type PoolsService struct {
 
 // Token represents a token in a pool.
 type Token struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Symbol   string   `json:"symbol"`
-	Chain    string   `json:"chain"`
-	Decimals int      `json:"decimals"`
-	AddedAt  string   `json:"added_at"`
-	FDV      *float64 `json:"fdv,omitempty"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Symbol      string   `json:"symbol"`
+	Chain       string   `json:"chain"`
+	Decimals    int      `json:"decimals"`
+	AddedAt     string   `json:"added_at"`
+	FDV         *float64 `json:"fdv,omitempty"`
+	TotalSupply *float64 `json:"total_supply,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Website     string   `json:"website,omitempty"`
+	Type        string   `json:"type,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	HasImage    *bool    `json:"has_image,omitempty"`
 }
 
 // Pool represents a liquidity pool.
 type Pool struct {
-	ID                    string  `json:"id"`
-	DexID                 string  `json:"dex_id"`
-	DexName               string  `json:"dex_name"`
-	Chain                 string  `json:"chain"`
-	VolumeUSD             float64 `json:"volume_usd"`
-	CreatedAt             string  `json:"created_at"`
-	CreatedAtBlockNumber  int64   `json:"created_at_block_number"`
-	Transactions          int     `json:"transactions"`
-	PriceUSD              float64 `json:"price_usd"`
-	LastPriceChangeUSD5m  float64 `json:"last_price_change_usd_5m"`
-	LastPriceChangeUSD1h  float64 `json:"last_price_change_usd_1h"`
-	LastPriceChangeUSD24h float64 `json:"last_price_change_usd_24h"`
-	Fee                   float64 `json:"fee"`
-	Tokens                []Token `json:"tokens"`
+	ID                    string   `json:"id"`
+	DexID                 string   `json:"dex_id"`
+	DexName               string   `json:"dex_name"`
+	Chain                 string   `json:"chain"`
+	VolumeUSD             float64  `json:"volume_usd"`
+	CreatedAt             string   `json:"created_at"`
+	CreatedAtBlockNumber  int64    `json:"created_at_block_number"`
+	Transactions          int      `json:"transactions"`
+	PriceUSD              float64  `json:"price_usd"`
+	LastPriceChangeUSD5m  *float64 `json:"last_price_change_usd_5m"`
+	LastPriceChangeUSD1h  *float64 `json:"last_price_change_usd_1h"`
+	LastPriceChangeUSD24h *float64 `json:"last_price_change_usd_24h"`
+	Fee                   *float64 `json:"fee"`
+	Tokens                []Token  `json:"tokens"`
+	VolumeUSD7d           *float64 `json:"volume_usd_7d,omitempty"`
+	LiquidityUSD          *float64 `json:"liquidity_usd,omitempty"`
 }
 
 // PoolsResponse represents the response for the pools endpoint.
@@ -389,6 +397,100 @@ func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddre
 	req.URL.RawQuery = q.Encode()
 
 	var response TransactionsResponse
+	r, err := s.client.Do(ctx, req, &response)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	return &response, nil
+}
+
+// PoolFilterOptions contains options for filtering pools on a network.
+type PoolFilterOptions struct {
+	Page          int
+	Limit         int
+	SortBy        string
+	SortDir       string
+	Volume24hMin  *float64
+	Volume24hMax  *float64
+	Volume7dMin   *float64
+	Volume7dMax   *float64
+	LiquidityMin  *float64
+	LiquidityMax  *float64
+	Txns24hMin    *int
+	CreatedAfter  string
+	CreatedBefore string
+}
+
+// PoolFilterResponse represents the response from the pool filter endpoint.
+type PoolFilterResponse struct {
+	Results  []Pool   `json:"results"`
+	PageInfo PageInfo `json:"page_info"`
+}
+
+// Filter returns pools on a network filtered by volume, liquidity, transactions, and creation date.
+func (s *PoolsService) Filter(ctx context.Context, networkID string, opts *PoolFilterOptions) (*PoolFilterResponse, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+
+	path := fmt.Sprintf("/networks/%s/pools/filter", networkID)
+
+	req, err := s.client.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := req.URL.Query()
+	if opts != nil {
+		if opts.Page > 0 {
+			q.Add("page", fmt.Sprintf("%d", opts.Page))
+		}
+		if opts.Limit > 0 {
+			limit := opts.Limit
+			if limit > 100 {
+				limit = 100
+			}
+			q.Add("limit", fmt.Sprintf("%d", limit))
+		}
+		if opts.SortBy != "" {
+			q.Add("sort_by", opts.SortBy)
+		}
+		if opts.SortDir != "" {
+			q.Add("sort_dir", opts.SortDir)
+		}
+		if opts.Volume24hMin != nil {
+			q.Add("volume_24h_min", fmt.Sprintf("%f", *opts.Volume24hMin))
+		}
+		if opts.Volume24hMax != nil {
+			q.Add("volume_24h_max", fmt.Sprintf("%f", *opts.Volume24hMax))
+		}
+		if opts.Volume7dMin != nil {
+			q.Add("volume_7d_min", fmt.Sprintf("%f", *opts.Volume7dMin))
+		}
+		if opts.Volume7dMax != nil {
+			q.Add("volume_7d_max", fmt.Sprintf("%f", *opts.Volume7dMax))
+		}
+		if opts.LiquidityMin != nil {
+			q.Add("liquidity_usd_min", fmt.Sprintf("%f", *opts.LiquidityMin))
+		}
+		if opts.LiquidityMax != nil {
+			q.Add("liquidity_usd_max", fmt.Sprintf("%f", *opts.LiquidityMax))
+		}
+		if opts.Txns24hMin != nil {
+			q.Add("txns_24h_min", fmt.Sprintf("%d", *opts.Txns24hMin))
+		}
+		if opts.CreatedAfter != "" {
+			q.Add("created_after", opts.CreatedAfter)
+		}
+		if opts.CreatedBefore != "" {
+			q.Add("created_before", opts.CreatedBefore)
+		}
+	}
+	req.URL.RawQuery = q.Encode()
+
+	var response PoolFilterResponse
 	r, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, err
