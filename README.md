@@ -344,6 +344,52 @@ pairPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken1_address", &d
 })
 ```
 
+### Pool Filtering
+
+```go
+// Find high-volume pools on Ethereum
+vol := 100000.0
+filtered, err := client.Pools.Filter(ctx, "ethereum", &dexpaprika.PoolFilterOptions{
+    Limit:        10,
+    Volume24hMin: &vol,
+    SortBy:       "volume_24h",
+    SortDir:      "desc",
+})
+fmt.Printf("Found %d pools matching criteria\n", len(filtered.Results))
+```
+
+### Top Tokens & Token Filtering
+
+```go
+// Get top tokens by volume
+topTokens, err := client.Tokens.GetTop(ctx, "ethereum", &dexpaprika.TopTokensOptions{
+    Limit:   10,
+    OrderBy: "volume_24h",
+})
+
+// Filter tokens by criteria
+vol := 100000.0
+fdv := 1000000.0
+filteredTokens, err := client.Tokens.Filter(ctx, "ethereum", &dexpaprika.TokenFilterOptions{
+    Limit:        10,
+    Volume24hMin: &vol,
+    FDVMin:       &fdv,
+})
+```
+
+### Batch Token Prices
+
+```go
+// Get prices for multiple tokens in one request (max 10)
+prices, err := client.Tokens.GetMultiPrices(ctx, "ethereum", []string{
+    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
+})
+for _, p := range prices {
+    fmt.Printf("%s: $%.4f\n", p.ID, *p.PriceUSD)
+}
+```
+
 ### Search
 
 ```go
