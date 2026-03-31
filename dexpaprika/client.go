@@ -277,7 +277,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 
 		// Clone the request to ensure we can retry with a fresh request
 		reqClone := req.Clone(ctx)
-		resp, err = c.client.Do(reqClone)
+		resp, err = c.client.Do(reqClone) //nolint:gosec // URL is constructed from trusted baseURL
 
 		// Check for context cancellation
 		select {

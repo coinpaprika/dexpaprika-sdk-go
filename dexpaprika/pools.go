@@ -408,19 +408,19 @@ func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddre
 
 // PoolFilterOptions contains options for filtering pools on a network.
 type PoolFilterOptions struct {
-	Page           int
-	Limit          int
-	SortBy         string
-	SortDir        string
-	Volume24hMin   *float64
-	Volume24hMax   *float64
-	Volume7dMin    *float64
-	Volume7dMax    *float64
-	LiquidityMin   *float64
-	LiquidityMax   *float64
-	Txns24hMin     *int
-	CreatedAfter   string
-	CreatedBefore  string
+	Page          int
+	Limit         int
+	SortBy        string
+	SortDir       string
+	Volume24hMin  *float64
+	Volume24hMax  *float64
+	Volume7dMin   *float64
+	Volume7dMax   *float64
+	LiquidityMin  *float64
+	LiquidityMax  *float64
+	Txns24hMin    *int
+	CreatedAfter  string
+	CreatedBefore string
 }
 
 // PoolFilterResponse represents the response from the pool filter endpoint.
