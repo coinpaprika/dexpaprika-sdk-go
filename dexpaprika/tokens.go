@@ -38,6 +38,8 @@ type TokenDetails struct {
 	TotalSupply float64       `json:"total_supply"`
 	Description string        `json:"description"`
 	Website     string        `json:"website"`
+	Telegram    string        `json:"telegram"`
+	Twitter     string        `json:"twitter"`
 	Explorer    string        `json:"explorer"`
 	AddedAt     string        `json:"added_at"`
 	Summary     *TokenSummary `json:"summary,omitempty"`

@@ -363,9 +363,28 @@ type TransactionsResponse struct {
 	PageInfo     PageInfo      `json:"page_info"`
 }
 
+// TransactionOption configures optional parameters for GetTransactions.
+type TransactionOption func(q *url.Values)
+
+// WithFromTimestamp filters transactions starting from this UNIX timestamp (inclusive).
+// Results are always capped to the last 7 days.
+func WithFromTimestamp(from int64) TransactionOption {
+	return func(q *url.Values) {
+		q.Add("from", fmt.Sprintf("%d", from))
+	}
+}
+
+// WithToTimestamp filters transactions up to this UNIX timestamp (exclusive).
+func WithToTimestamp(to int64) TransactionOption {
+	return func(q *url.Values) {
+		q.Add("to", fmt.Sprintf("%d", to))
+	}
+}
+
 // GetTransactions returns transactions of a pool on a network.
 // Implements the getPoolTransactions operation from the OpenAPI spec.
-func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddress string, page, limit int, cursor string) (*TransactionsResponse, error) {
+// Use WithFromTimestamp and WithToTimestamp to filter by time range.
+func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddress string, page, limit int, cursor string, opts ...TransactionOption) (*TransactionsResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
@@ -393,6 +412,9 @@ func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddre
 	}
 	if cursor != "" {
 		q.Add("cursor", cursor)
+	}
+	for _, opt := range opts {
+		opt(&q)
 	}
 	req.URL.RawQuery = q.Encode()
 
