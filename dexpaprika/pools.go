@@ -46,8 +46,13 @@ type Pool struct {
 	LastPriceChangeUSD24h *float64 `json:"last_price_change_usd_24h"`
 	Fee                   *float64 `json:"fee"`
 	Tokens                []Token  `json:"tokens"`
-	VolumeUSD7d           *float64 `json:"volume_usd_7d,omitempty"`
-	LiquidityUSD          *float64 `json:"liquidity_usd,omitempty"`
+	// VolumeUSD is returned by the pools list endpoint. The pools filter endpoint
+	// instead returns timeframe-split volume below (VolumeUSD24h/7d/30d); the unused
+	// fields are nil/zero depending on which endpoint produced this value.
+	VolumeUSD24h *float64 `json:"volume_usd_24h,omitempty"`
+	VolumeUSD7d  *float64 `json:"volume_usd_7d,omitempty"`
+	VolumeUSD30d *float64 `json:"volume_usd_30d,omitempty"`
+	LiquidityUSD *float64 `json:"liquidity_usd,omitempty"`
 }
 
 // PoolsResponse represents the response for the pools endpoint.
