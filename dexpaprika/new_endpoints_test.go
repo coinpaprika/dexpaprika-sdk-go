@@ -27,7 +27,12 @@ func TestPoolsFilter(t *testing.T) {
 	if len(pool.Tokens) == 0 {
 		t.Fatal("Pool missing tokens")
 	}
-	t.Logf("Got %d filtered pools, first: %s", len(result.Results), pool.ID)
+	// Guard against the silent data loss this fix addresses: the filter endpoint
+	// returns timeframe-split volume, so VolumeUSD24h must be populated.
+	if pool.VolumeUSD24h == nil {
+		t.Fatal("Pool missing volume_usd_24h (filter endpoint should return it)")
+	}
+	t.Logf("Got %d filtered pools, first: %s (vol24h=%.0f)", len(result.Results), pool.ID, *pool.VolumeUSD24h)
 }
 
 func TestPoolsFilterMultipleParams(t *testing.T) {

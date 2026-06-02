@@ -230,6 +230,7 @@ type FilteredToken struct {
 	PriceUSD     *float64 `json:"price_usd,omitempty"`
 	VolumeUSD24h *float64 `json:"volume_usd_24h,omitempty"`
 	VolumeUSD7d  *float64 `json:"volume_usd_7d,omitempty"`
+	VolumeUSD30d *float64 `json:"volume_usd_30d,omitempty"`
 	LiquidityUSD *float64 `json:"liquidity_usd,omitempty"`
 	FDVUSD       *float64 `json:"fdv_usd,omitempty"`
 	Txns24h      *int     `json:"txns_24h,omitempty"`
@@ -237,8 +238,10 @@ type FilteredToken struct {
 }
 
 // TokenFilterResponse represents the response from the token filter endpoint.
+// The endpoint returns its rows under a "data" key (not "results"), so Results
+// is tagged accordingly to stay backward-compatible for callers using .Results.
 type TokenFilterResponse struct {
-	Results  []FilteredToken `json:"results"`
+	Results  []FilteredToken `json:"data"`
 	PageInfo PageInfo        `json:"page_info"`
 }
 
