@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Advanced pool search**: `Pools.AdvancedSearch()` (global, `/frontend/v1/pools`) and `Pools.AdvancedSearchByNetwork()` (per-network, `/frontend/v1/networks/{network}/pools`) for rich pool discovery with filters, cursor pagination, and optional detailed token metrics
+- Canonical `SortBy`/`SortDir` options are translated to the backend's `order_by`/`sort` query parameters automatically
+- New types: `AdvancedSearchOptions`, `AdvancedSearchResponse`, `PoolRow`, `AdvancedToken`, `AdvancedTokenTimeframe`
+- All response metric fields are optional/nullable to tolerate fields the API may omit
+
 ## [1.4.0] - 2026-03-31
 
 ### Added

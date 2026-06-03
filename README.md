@@ -358,6 +358,42 @@ filtered, err := client.Pools.Filter(ctx, "ethereum", &dexpaprika.PoolFilterOpti
 fmt.Printf("Found %d pools matching criteria\n", len(filtered.Results))
 ```
 
+### Advanced Pool Search
+
+```go
+// Search pools across every network via /frontend/v1/pools.
+// SortBy/SortDir are the canonical names; they are translated to the backend's
+// order_by/sort on the wire for you.
+minPrice := 0.5
+res, err := client.Pools.AdvancedSearch(ctx, &dexpaprika.AdvancedSearchOptions{
+    Limit:       10,
+    SortBy:      "volume_usd_24h", // sent as order_by
+    SortDir:     "desc",           // sent as sort
+    PriceUSDMin: &minPrice,
+    DexName:     "uniswap_v3",
+    Detailed:    true, // attach FDV + per-timeframe token metrics
+})
+fmt.Printf("Found %d pools (has_next_page=%v)\n", len(res.Results), res.HasNextPage)
+
+// Cursor pagination (this endpoint is cursor-based, not page-based):
+if res.HasNextPage && res.NextCursor != nil {
+    next, _ := client.Pools.AdvancedSearch(ctx, &dexpaprika.AdvancedSearchOptions{
+        Limit:   10,
+        SortBy:  "volume_usd_24h",
+        SortDir: "desc",
+        Cursor:  *res.NextCursor,
+    })
+    fmt.Printf("Next page: %d pools\n", len(next.Results))
+}
+
+// Scope the same search to a single network via /frontend/v1/networks/{network}/pools:
+ethRes, err := client.Pools.AdvancedSearchByNetwork(ctx, "ethereum", &dexpaprika.AdvancedSearchOptions{
+    Limit:   10,
+    SortBy:  "liquidity_usd",
+    SortDir: "desc",
+})
+```
+
 ### Top Tokens & Token Filtering
 
 ```go
