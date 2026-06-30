@@ -98,12 +98,12 @@ func main() {
         fmt.Printf("  - %s (%s)\n", network.DisplayName, network.ID)
     }
     
-    // Get top trading pools from Ethereum network
-    // Note: The global Pools.List() method has been deprecated in API v1.3.0
-    // Use ListByNetwork() for specific networks instead
+    // Get top trading pools from Ethereum network.
+    // ListByNetwork targets the unified /pools/search endpoint. It is
+    // cursor-paginated and reports 24h volume in VolumeUSD24h (a pointer).
     pools, err := client.Pools.ListByNetwork(ctx, "ethereum", &dexpaprika.ListOptions{
         Limit:   5,
-        OrderBy: "volume_usd",
+        OrderBy: "volume_usd_24h",
         Sort:    "desc",
     })
     if err != nil {
@@ -112,10 +112,14 @@ func main() {
     
     fmt.Println("\nTop trading pools on Ethereum:")
     for _, pool := range pools.Pools {
-        fmt.Printf("  - %s on %s (Volume: $%.2f)\n", 
-            pool.DexName, 
-            pool.Chain, 
-            pool.VolumeUSD)
+        vol24h := 0.0
+        if pool.VolumeUSD24h != nil {
+            vol24h = *pool.VolumeUSD24h
+        }
+        fmt.Printf("  - %s on %s (24h Volume: $%.2f)\n",
+            pool.DexName,
+            pool.Chain,
+            vol24h)
     }
 }
 ```
@@ -142,12 +146,12 @@ func main() {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
-    // Get top pools with pagination from Ethereum network
-    // Note: Global pools endpoint deprecated in API v1.3.0
+    // Get top pools from Ethereum network.
+    // ListByNetwork uses the cursor-paginated /pools/search endpoint; Page is
+    // ignored, use the Cursor option to page through results.
     poolsOpts := &dexpaprika.ListOptions{
         Limit:   10,
-        Page:    0,
-        OrderBy: "volume_usd",
+        OrderBy: "volume_usd_24h",
         Sort:    "desc",
     }
     pools, err := client.Pools.ListByNetwork(ctx, "ethereum", poolsOpts)
@@ -346,25 +350,33 @@ pairPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken1_address", &d
 
 ### Pool Filtering
 
+`Pools.Filter` targets the unified `/pools/search` endpoint. It is cursor-paginated
+(`Cursor` / `NextCursor`), and legacy sort values are normalized automatically.
+
 ```go
 // Find high-volume pools on Ethereum
 vol := 100000.0
 filtered, err := client.Pools.Filter(ctx, "ethereum", &dexpaprika.PoolFilterOptions{
     Limit:        10,
     Volume24hMin: &vol,
-    SortBy:       "volume_24h",
+    SortBy:       "volume_usd_24h",
     SortDir:      "desc",
 })
-fmt.Printf("Found %d pools matching criteria\n", len(filtered.Results))
+fmt.Printf("Found %d pools matching criteria (more pages: %v)\n", len(filtered.Results), filtered.HasNextPage)
 ```
 
 ### Top Tokens & Token Filtering
+
+`Tokens.GetTop` and `Tokens.Filter` target the unified `/tokens/search` endpoint and
+return the flat row shape (`FilteredToken`): address, chain, price, volume, liquidity,
+FDV, transactions, and 24h price change. The API no longer returns token name/symbol
+here. Both are cursor-paginated.
 
 ```go
 // Get top tokens by volume
 topTokens, err := client.Tokens.GetTop(ctx, "ethereum", &dexpaprika.TopTokensOptions{
     Limit:   10,
-    OrderBy: "volume_24h",
+    OrderBy: "volume_usd_24h",
 })
 
 // Filter tokens by criteria

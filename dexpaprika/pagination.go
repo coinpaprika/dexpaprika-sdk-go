@@ -20,7 +20,15 @@ type PoolsPaginator struct {
 	secondToken string // Optional, for filtering token pairs
 	options     *ListOptions
 	currentResp *PoolsResponse
+	cursor      string // Cursor for the cursor-paginated network /pools/search endpoint
 	err         error
+}
+
+// isNetworkSearch reports whether this paginator fetches network pools via the
+// cursor-paginated /pools/search endpoint (as opposed to the page-based DEX-pool
+// or token-pool endpoints).
+func (p *PoolsPaginator) isNetworkSearch() bool {
+	return p.networkID != "" && p.dexID == "" && p.tokenID == ""
 }
 
 // NewPoolsPaginator creates a new paginator for pools
@@ -68,6 +76,12 @@ func (p *PoolsPaginator) HasNextPage() bool {
 		return false
 	}
 
+	// The network /pools/search endpoint is cursor-paginated and reports whether
+	// more pages exist directly.
+	if p.isNetworkSearch() {
+		return p.currentResp.HasNextPage
+	}
+
 	// Check if we've received fewer items than requested, indicating last page
 	if len(p.currentResp.Pools) < p.options.Limit {
 		return false
@@ -87,29 +101,32 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 		return fmt.Errorf("no more pages")
 	}
 
-	// Increment page number if not the first page
-	if p.currentResp != nil {
-		p.options.Page++
-	}
-
 	var resp *PoolsResponse
 	var err error
 
 	// Determine which API endpoint to call based on the set parameters
-	if p.tokenID != "" {
-		// Token pools - use new TokenPoolsOptions struct
+	switch {
+	case p.tokenID != "":
+		// Token pools (page-based) - use new TokenPoolsOptions struct
+		if p.currentResp != nil {
+			p.options.Page++
+		}
 		tokenOpts := &TokenPoolsOptions{
 			ListOptions:            p.options,
 			AdditionalTokenAddress: p.secondToken,
 		}
 		resp, err = p.client.Tokens.GetPools(ctx, p.networkID, p.tokenID, tokenOpts)
-	} else if p.dexID != "" {
-		// DEX pools
+	case p.dexID != "":
+		// DEX pools (page-based)
+		if p.currentResp != nil {
+			p.options.Page++
+		}
 		resp, err = p.client.Pools.ListByDex(ctx, p.networkID, p.dexID, p.options)
-	} else if p.networkID != "" {
-		// Network pools
+	case p.networkID != "":
+		// Network pools (cursor-based /pools/search)
+		p.options.Cursor = p.cursor
 		resp, err = p.client.Pools.ListByNetwork(ctx, p.networkID, p.options)
-	} else {
+	default:
 		// No network specified - this was using the deprecated global endpoint
 		// Return an error to guide users to use network-specific pagination
 		err = fmt.Errorf("network ID is required for pools pagination. Use ForNetwork(networkID) to specify a network")
@@ -121,6 +138,16 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 	}
 
 	p.currentResp = resp
+
+	// Track the cursor for the next page of a network search.
+	if p.isNetworkSearch() {
+		if resp != nil && resp.NextCursor != nil {
+			p.cursor = *resp.NextCursor
+		} else {
+			p.cursor = ""
+		}
+	}
+
 	return nil
 }
 

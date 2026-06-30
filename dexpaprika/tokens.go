@@ -139,64 +139,55 @@ func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress st
 	return &response, nil
 }
 
-// TopTokenTimeMetrics represents time interval metrics for top tokens.
-type TopTokenTimeMetrics struct {
-	VolumeUSD          float64  `json:"volume_usd"`
-	Txns               int      `json:"txns"`
-	LastPriceUSDChange *float64 `json:"last_price_usd_change,omitempty"`
-	Buys               *int     `json:"buys,omitempty"`
-	Sells              *int     `json:"sells,omitempty"`
-}
+// TopToken is an alias for FilteredToken, kept for backward compatibility.
+// Since the API removed /networks/{network}/tokens/top, GetTop now returns the
+// flat /tokens/search row shape (FilteredToken). The legacy name/symbol and
+// nested timeframe metrics are no longer returned by the API.
+type TopToken = FilteredToken
 
-// TopToken represents a token from the top tokens endpoint.
-type TopToken struct {
-	Address      string               `json:"address"`
-	Name         string               `json:"name"`
-	Symbol       string               `json:"symbol"`
-	Chain        string               `json:"chain"`
-	Decimals     int                  `json:"decimals"`
-	HasImage     *bool                `json:"has_image,omitempty"`
-	PriceUSD     *float64             `json:"price_usd,omitempty"`
-	FDV          *float64             `json:"fdv,omitempty"`
-	LiquidityUSD *float64             `json:"liquidity_usd,omitempty"`
-	Pools        *int                 `json:"pools,omitempty"`
-	Day          *TopTokenTimeMetrics `json:"24h,omitempty"`
-	Hour1        *TopTokenTimeMetrics `json:"1h,omitempty"`
-	Minute5      *TopTokenTimeMetrics `json:"5m,omitempty"`
-}
-
-// TopTokensResponse represents the response from the top tokens endpoint.
+// TopTokensResponse represents the response from the /tokens/search endpoint.
 type TopTokensResponse struct {
-	Tokens   []TopToken `json:"tokens"`
-	PageInfo PageInfo   `json:"page_info"`
+	Tokens      []TopToken `json:"results"`
+	HasNextPage bool       `json:"has_next_page"`
+	NextCursor  *string    `json:"next_cursor,omitempty"`
 }
 
-// TopTokensOptions contains options for the top tokens endpoint.
+// TopTokensOptions contains options for ranking tokens.
+//
+// Page is accepted for backward compatibility but is not sent to the
+// cursor-paginated /tokens/search endpoint; use Cursor to page instead.
 type TopTokensOptions struct {
 	Page    int
 	Limit   int
 	OrderBy string
 	Sort    string
+	Cursor  string
 }
 
-// GetTop returns top tokens on a network ranked by volume, price, liquidity, or other metrics.
+// GetTop returns top tokens on a network ranked by volume, liquidity, FDV, or
+// other metrics.
+//
+// Since /networks/{network}/tokens/top was removed (HTTP 410), this targets the
+// unified /networks/{network}/tokens/search endpoint: the sort field is
+// normalized to a canonical value and pagination is cursor-based (Page is
+// ignored, use Cursor).
 func (s *TokensService) GetTop(ctx context.Context, networkID string, opts *TopTokensOptions) (*TopTokensResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/networks/%s/tokens/top", networkID)
-
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, fmt.Sprintf("/networks/%s/tokens/search", networkID), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	q := req.URL.Query()
+	orderBy := ""
 	if opts != nil {
-		if opts.Page > 0 {
-			q.Add("page", fmt.Sprintf("%d", opts.Page))
-		}
+		orderBy = opts.OrderBy
+	}
+	q.Add("order_by", mapTokenSortField(orderBy))
+	if opts != nil {
 		if opts.Limit > 0 {
 			limit := opts.Limit
 			if limit > 100 {
@@ -204,11 +195,11 @@ func (s *TokensService) GetTop(ctx context.Context, networkID string, opts *TopT
 			}
 			q.Add("limit", fmt.Sprintf("%d", limit))
 		}
-		if opts.OrderBy != "" {
-			q.Add("order_by", opts.OrderBy)
-		}
 		if opts.Sort != "" {
 			q.Add("sort", opts.Sort)
+		}
+		if opts.Cursor != "" {
+			q.Add("cursor", opts.Cursor)
 		}
 	}
 	req.URL.RawQuery = q.Encode()
@@ -223,34 +214,38 @@ func (s *TokensService) GetTop(ctx context.Context, networkID string, opts *TopT
 	return &response, nil
 }
 
-// FilteredToken represents a token from the token filter endpoint.
+// FilteredToken represents a token row from the /tokens/search endpoint.
 type FilteredToken struct {
-	Chain        string   `json:"chain"`
-	Address      string   `json:"address"`
-	PriceUSD     *float64 `json:"price_usd,omitempty"`
-	VolumeUSD24h *float64 `json:"volume_usd_24h,omitempty"`
-	VolumeUSD7d  *float64 `json:"volume_usd_7d,omitempty"`
-	VolumeUSD30d *float64 `json:"volume_usd_30d,omitempty"`
-	LiquidityUSD *float64 `json:"liquidity_usd,omitempty"`
-	FDVUSD       *float64 `json:"fdv_usd,omitempty"`
-	Txns24h      *int     `json:"txns_24h,omitempty"`
-	CreatedAt    string   `json:"created_at,omitempty"`
+	Chain                    string   `json:"chain"`
+	Address                  string   `json:"address"`
+	PriceUSD                 *float64 `json:"price_usd,omitempty"`
+	VolumeUSD24h             *float64 `json:"volume_usd_24h,omitempty"`
+	VolumeUSD7d              *float64 `json:"volume_usd_7d,omitempty"`
+	VolumeUSD30d             *float64 `json:"volume_usd_30d,omitempty"`
+	LiquidityUSD             *float64 `json:"liquidity_usd,omitempty"`
+	FDVUSD                   *float64 `json:"fdv_usd,omitempty"`
+	Txns24h                  *int     `json:"txns_24h,omitempty"`
+	PriceChangePercentage24h *float64 `json:"price_change_percentage_24h,omitempty"`
+	CreatedAt                string   `json:"created_at,omitempty"`
 }
 
-// TokenFilterResponse represents the response from the token filter endpoint.
-// The endpoint returns its rows under a "data" key (not "results"), so Results
-// is tagged accordingly to stay backward-compatible for callers using .Results.
+// TokenFilterResponse represents the response from the /tokens/search endpoint.
 type TokenFilterResponse struct {
-	Results  []FilteredToken `json:"data"`
-	PageInfo PageInfo        `json:"page_info"`
+	Results     []FilteredToken `json:"results"`
+	HasNextPage bool            `json:"has_next_page"`
+	NextCursor  *string         `json:"next_cursor,omitempty"`
 }
 
 // TokenFilterOptions contains options for filtering tokens on a network.
+//
+// Page is accepted for backward compatibility but is not sent to the
+// cursor-paginated /tokens/search endpoint; use Cursor to page instead.
 type TokenFilterOptions struct {
 	Page          int
 	Limit         int
 	SortBy        string
 	SortDir       string
+	Cursor        string
 	Volume24hMin  *float64
 	Volume24hMax  *float64
 	LiquidityMin  *float64
@@ -262,23 +257,28 @@ type TokenFilterOptions struct {
 }
 
 // Filter returns tokens on a network filtered by volume, liquidity, FDV, transactions, and creation date.
+//
+// Since /networks/{network}/tokens/filter was removed (HTTP 410), this targets
+// the unified /networks/{network}/tokens/search endpoint: filters use canonical
+// query parameter names, sorting uses order_by (normalized) plus sort
+// (direction), and pagination is cursor-based (Page is ignored, use Cursor).
 func (s *TokensService) Filter(ctx context.Context, networkID string, opts *TokenFilterOptions) (*TokenFilterResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/networks/%s/tokens/filter", networkID)
-
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, fmt.Sprintf("/networks/%s/tokens/search", networkID), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	q := req.URL.Query()
+	sortBy := ""
 	if opts != nil {
-		if opts.Page > 0 {
-			q.Add("page", fmt.Sprintf("%d", opts.Page))
-		}
+		sortBy = opts.SortBy
+	}
+	q.Add("order_by", mapTokenSortField(sortBy))
+	if opts != nil {
 		if opts.Limit > 0 {
 			limit := opts.Limit
 			if limit > 100 {
@@ -286,17 +286,17 @@ func (s *TokensService) Filter(ctx context.Context, networkID string, opts *Toke
 			}
 			q.Add("limit", fmt.Sprintf("%d", limit))
 		}
-		if opts.SortBy != "" {
-			q.Add("sort_by", opts.SortBy)
-		}
 		if opts.SortDir != "" {
-			q.Add("sort_dir", opts.SortDir)
+			q.Add("sort", opts.SortDir)
+		}
+		if opts.Cursor != "" {
+			q.Add("cursor", opts.Cursor)
 		}
 		if opts.Volume24hMin != nil {
-			q.Add("volume_24h_min", fmt.Sprintf("%f", *opts.Volume24hMin))
+			q.Add("volume_usd_24h_min", fmt.Sprintf("%f", *opts.Volume24hMin))
 		}
 		if opts.Volume24hMax != nil {
-			q.Add("volume_24h_max", fmt.Sprintf("%f", *opts.Volume24hMax))
+			q.Add("volume_usd_24h_max", fmt.Sprintf("%f", *opts.Volume24hMax))
 		}
 		if opts.LiquidityMin != nil {
 			q.Add("liquidity_usd_min", fmt.Sprintf("%f", *opts.LiquidityMin))

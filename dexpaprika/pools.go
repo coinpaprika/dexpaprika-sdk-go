@@ -46,27 +46,44 @@ type Pool struct {
 	LastPriceChangeUSD24h *float64 `json:"last_price_change_usd_24h"`
 	Fee                   *float64 `json:"fee"`
 	Tokens                []Token  `json:"tokens"`
-	// VolumeUSD is returned by the pools list endpoint. The pools filter endpoint
-	// instead returns timeframe-split volume below (VolumeUSD24h/7d/30d); the unused
-	// fields are nil/zero depending on which endpoint produced this value.
-	VolumeUSD24h *float64 `json:"volume_usd_24h,omitempty"`
-	VolumeUSD7d  *float64 `json:"volume_usd_7d,omitempty"`
-	VolumeUSD30d *float64 `json:"volume_usd_30d,omitempty"`
-	LiquidityUSD *float64 `json:"liquidity_usd,omitempty"`
+	// VolumeUSD/Transactions/LastPriceChangeUSD* are returned by the DEX-pools and
+	// token-pools endpoints. The /pools/search endpoint instead returns the
+	// timeframe-split and percentage-named fields below; whichever endpoint
+	// produced this value leaves the other set nil/zero.
+	VolumeUSD24h             *float64 `json:"volume_usd_24h,omitempty"`
+	VolumeUSD7d              *float64 `json:"volume_usd_7d,omitempty"`
+	VolumeUSD30d             *float64 `json:"volume_usd_30d,omitempty"`
+	LiquidityUSD             *float64 `json:"liquidity_usd,omitempty"`
+	Transactions24h          int      `json:"transactions_24h,omitempty"`
+	PriceChangePercentage5m  *float64 `json:"price_change_percentage_5m,omitempty"`
+	PriceChangePercentage1h  *float64 `json:"price_change_percentage_1h,omitempty"`
+	PriceChangePercentage24h *float64 `json:"price_change_percentage_24h,omitempty"`
 }
 
-// PoolsResponse represents the response for the pools endpoint.
+// PoolsResponse represents the response for the pools endpoints.
+//
+// The DEX-pools and token-pools endpoints return rows under "pools" with
+// page-based PageInfo. The /pools/search endpoint (used by ListByNetwork)
+// returns rows under "results" with cursor-based HasNextPage/NextCursor;
+// ListByNetwork copies those rows into Pools so callers keep reading .Pools.
 type PoolsResponse struct {
-	Pools    []Pool   `json:"pools"`
-	PageInfo PageInfo `json:"page_info"`
+	Pools       []Pool   `json:"pools"`
+	Results     []Pool   `json:"results,omitempty"`
+	PageInfo    PageInfo `json:"page_info"`
+	HasNextPage bool     `json:"has_next_page,omitempty"`
+	NextCursor  *string  `json:"next_cursor,omitempty"`
 }
 
 // ListOptions contains common options for listing pools.
+//
+// Page is honored only by the legacy/DEX-pool endpoints. The cursor-paginated
+// /pools/search endpoint ignores Page; use Cursor to fetch the next page.
 type ListOptions struct {
 	Page    int
 	Limit   int
 	Sort    string
 	OrderBy string
+	Cursor  string
 }
 
 // validateNetworkID validates that a network ID is not empty
@@ -150,24 +167,44 @@ func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsRespo
 }
 
 // ListByNetwork returns a list of top pools on a specific network.
-// Implements the getNetworkPools operation from the OpenAPI spec.
 //
-// This is the recommended method to retrieve pools since API v1.3.0.
-// The global List() method has been deprecated.
+// Since the DexPaprika API removed /networks/{network}/pools (HTTP 410), this
+// method targets the unified /networks/{network}/pools/search endpoint. That
+// endpoint is cursor-paginated and rejects the legacy sort values, so the sort
+// field is normalized and the Page option is not sent upstream. Pass
+// ListOptions.Cursor (taken from a previous response's NextCursor) to page.
 func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts *ListOptions) (*PoolsResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
 
-	path, err := addOptions(fmt.Sprintf("/networks/%s/pools", networkID), opts)
+	req, err := s.client.NewRequest(http.MethodGet, fmt.Sprintf("/networks/%s/pools/search", networkID), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, err
+	q := req.URL.Query()
+	orderBy := ""
+	if opts != nil {
+		orderBy = opts.OrderBy
 	}
+	q.Add("order_by", mapPoolSortField(orderBy))
+	if opts != nil {
+		if opts.Limit > 0 {
+			limit := opts.Limit
+			if limit > 100 {
+				limit = 100
+			}
+			q.Add("limit", fmt.Sprintf("%d", limit))
+		}
+		if opts.Sort != "" {
+			q.Add("sort", opts.Sort)
+		}
+		if opts.Cursor != "" {
+			q.Add("cursor", opts.Cursor)
+		}
+	}
+	req.URL.RawQuery = q.Encode()
 
 	var response PoolsResponse
 	r, err := s.client.Do(ctx, req, &response)
@@ -175,6 +212,11 @@ func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts
 		return nil, err
 	}
 	defer r.Body.Close()
+
+	// /pools/search returns rows under "results"; expose them via .Pools.
+	if len(response.Pools) == 0 {
+		response.Pools = response.Results
+	}
 
 	return &response, nil
 }
@@ -434,11 +476,15 @@ func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddre
 }
 
 // PoolFilterOptions contains options for filtering pools on a network.
+//
+// Page is accepted for backward compatibility but is not sent to the
+// cursor-paginated /pools/search endpoint; use Cursor to page instead.
 type PoolFilterOptions struct {
 	Page          int
 	Limit         int
 	SortBy        string
 	SortDir       string
+	Cursor        string
 	Volume24hMin  *float64
 	Volume24hMax  *float64
 	Volume7dMin   *float64
@@ -450,30 +496,36 @@ type PoolFilterOptions struct {
 	CreatedBefore string
 }
 
-// PoolFilterResponse represents the response from the pool filter endpoint.
+// PoolFilterResponse represents the response from the /pools/search endpoint.
 type PoolFilterResponse struct {
-	Results  []Pool   `json:"results"`
-	PageInfo PageInfo `json:"page_info"`
+	Results     []Pool  `json:"results"`
+	HasNextPage bool    `json:"has_next_page"`
+	NextCursor  *string `json:"next_cursor,omitempty"`
 }
 
 // Filter returns pools on a network filtered by volume, liquidity, transactions, and creation date.
+//
+// Since /networks/{network}/pools/filter was removed (HTTP 410), this targets
+// the unified /networks/{network}/pools/search endpoint: filters use canonical
+// query parameter names, sorting uses order_by (normalized) plus sort
+// (direction), and pagination is cursor-based (Page is ignored, use Cursor).
 func (s *PoolsService) Filter(ctx context.Context, networkID string, opts *PoolFilterOptions) (*PoolFilterResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/networks/%s/pools/filter", networkID)
-
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, fmt.Sprintf("/networks/%s/pools/search", networkID), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	q := req.URL.Query()
+	sortBy := ""
 	if opts != nil {
-		if opts.Page > 0 {
-			q.Add("page", fmt.Sprintf("%d", opts.Page))
-		}
+		sortBy = opts.SortBy
+	}
+	q.Add("order_by", mapPoolSortField(sortBy))
+	if opts != nil {
 		if opts.Limit > 0 {
 			limit := opts.Limit
 			if limit > 100 {
@@ -481,23 +533,23 @@ func (s *PoolsService) Filter(ctx context.Context, networkID string, opts *PoolF
 			}
 			q.Add("limit", fmt.Sprintf("%d", limit))
 		}
-		if opts.SortBy != "" {
-			q.Add("sort_by", opts.SortBy)
-		}
 		if opts.SortDir != "" {
-			q.Add("sort_dir", opts.SortDir)
+			q.Add("sort", opts.SortDir)
+		}
+		if opts.Cursor != "" {
+			q.Add("cursor", opts.Cursor)
 		}
 		if opts.Volume24hMin != nil {
-			q.Add("volume_24h_min", fmt.Sprintf("%f", *opts.Volume24hMin))
+			q.Add("volume_usd_24h_min", fmt.Sprintf("%f", *opts.Volume24hMin))
 		}
 		if opts.Volume24hMax != nil {
-			q.Add("volume_24h_max", fmt.Sprintf("%f", *opts.Volume24hMax))
+			q.Add("volume_usd_24h_max", fmt.Sprintf("%f", *opts.Volume24hMax))
 		}
 		if opts.Volume7dMin != nil {
-			q.Add("volume_7d_min", fmt.Sprintf("%f", *opts.Volume7dMin))
+			q.Add("volume_usd_7d_min", fmt.Sprintf("%f", *opts.Volume7dMin))
 		}
 		if opts.Volume7dMax != nil {
-			q.Add("volume_7d_max", fmt.Sprintf("%f", *opts.Volume7dMax))
+			q.Add("volume_usd_7d_max", fmt.Sprintf("%f", *opts.Volume7dMax))
 		}
 		if opts.LiquidityMin != nil {
 			q.Add("liquidity_usd_min", fmt.Sprintf("%f", *opts.LiquidityMin))

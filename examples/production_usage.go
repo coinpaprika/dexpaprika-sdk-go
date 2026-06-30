@@ -103,13 +103,18 @@ func main() {
 	} else {
 		fmt.Printf("   Found %d pools on Ethereum\n", len(pools.Pools))
 
-		// Display first pool
+		// Display first pool. The /pools/search endpoint returns 24h volume in
+		// VolumeUSD24h (a pointer), so guard against a nil value.
 		if len(pools.Pools) > 0 {
 			pool := pools.Pools[0]
-			fmt.Printf("   Top pool: %s on %s (Volume: $%.2f)\n",
+			vol24h := 0.0
+			if pool.VolumeUSD24h != nil {
+				vol24h = *pool.VolumeUSD24h
+			}
+			fmt.Printf("   Top pool: %s on %s (24h Volume: $%.2f)\n",
 				pool.DexName,
 				pool.Chain,
-				pool.VolumeUSD)
+				vol24h)
 		}
 	}
 
