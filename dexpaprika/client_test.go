@@ -185,6 +185,65 @@ func TestAPIError_Error(t *testing.T) {
 	}
 }
 
+// TestClient_Do_GoneWithReplacement verifies that a 410 body carrying only
+// "message" and "replacement" (no "error" key) surfaces BOTH the API message
+// and the replacement endpoint, and exposes err.Replacement to callers.
+func TestClient_Do_GoneWithReplacement(t *testing.T) {
+	const replacement = "/networks/:network/pools/search"
+	body := `{"code":410,"message":"endpoint removed","replacement":"` + replacement + `"}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusGone)
+		fmt.Fprintln(w, body)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+
+	req, err := client.NewRequest(http.MethodGet, "/test", nil)
+	if err != nil {
+		t.Fatalf("NewRequest returned error: %v", err)
+	}
+
+	var result interface{}
+	resp, err := client.Do(context.Background(), req, &result)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err == nil {
+		t.Fatal("Do() returned nil error, want error")
+	}
+
+	if !errors.Is(err, ErrGone) {
+		t.Errorf("Do() error = %v, want it to wrap ErrGone", err)
+	}
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Do() returned error of type %T, want *APIError", err)
+	}
+
+	if apiErr.StatusCode != http.StatusGone {
+		t.Errorf("APIError.StatusCode = %d, want %d", apiErr.StatusCode, http.StatusGone)
+	}
+	if apiErr.Replacement != replacement {
+		t.Errorf("APIError.Replacement = %q, want %q", apiErr.Replacement, replacement)
+	}
+	if !strings.Contains(apiErr.Message, "endpoint removed") {
+		t.Errorf("APIError.Message = %q, want it to contain the API message %q", apiErr.Message, "endpoint removed")
+	}
+	if !strings.Contains(apiErr.Message, replacement) {
+		t.Errorf("APIError.Message = %q, want it to contain the replacement %q", apiErr.Message, replacement)
+	}
+	if !strings.Contains(apiErr.Error(), "Use "+replacement+" instead.") {
+		t.Errorf("APIError.Error() = %q, want it to contain the replacement hint", apiErr.Error())
+	}
+}
+
 // TestClient_NewRequestWithBody tests creating a request with a body
 func TestClient_NewRequestWithBody(t *testing.T) {
 	client := NewClient()
