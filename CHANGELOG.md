@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.5.1] - 2026-07-01
+
+### Changed
+- **Deprecation errors surface the replacement**: `APIError` now has a `Replacement` field, populated from the API error body's `replacement`, and the error message includes `Use <replacement> instead.`. Also fixes a bug where the API's `message` was dropped when the body had no `error` key. `ErrGone` still matches via `errors.Is`. Generic across any error status carrying a `replacement`.
+
 ## [1.5.0] - 2026-06-30
 
 ### Breaking Changes

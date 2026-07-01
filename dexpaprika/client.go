@@ -196,8 +196,14 @@ var (
 
 // APIError represents a structured API error
 type APIError struct {
-	StatusCode  int
-	Message     string
+	StatusCode int
+	Message    string
+	// Replacement is the endpoint the API suggests using instead, parsed from
+	// the "replacement" field of the error body when present. It is populated
+	// for any error status (not only 410), so self-documenting deprecations are
+	// discoverable by callers via err.Replacement. Empty when the API did not
+	// advertise a replacement.
+	Replacement string
 	RawResponse []byte
 	Err         error
 }
@@ -350,18 +356,30 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 // createAPIError creates an appropriate APIError based on the HTTP status code
 func createAPIError(resp *http.Response, body []byte) *APIError {
 	var errMsg string
+	var replacement string
 	var err error
 
-	// Try to extract an error message from body
+	// Try to extract an error message from the body. This parse is defensive:
+	// the body may not be JSON, or may omit any of these fields. In that case
+	// the fields stay empty and we fall back to the status-based defaults below.
 	var errorResp struct {
-		Error   string `json:"error"`
-		Message string `json:"message"`
+		Error       string `json:"error"`
+		Message     string `json:"message"`
+		Replacement string `json:"replacement"`
 	}
-	if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error != "" {
-		errMsg = errorResp.Error
-		if errorResp.Message != "" {
-			errMsg = errMsg + ": " + errorResp.Message
+	if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil {
+		switch {
+		case errorResp.Error != "" && errorResp.Message != "":
+			errMsg = errorResp.Error + ": " + errorResp.Message
+		case errorResp.Error != "":
+			errMsg = errorResp.Error
+		case errorResp.Message != "":
+			// Some responses (notably the 410 deprecation body) carry only
+			// "message" with no "error" key. Use it so the API's own text is
+			// not silently dropped.
+			errMsg = errorResp.Message
 		}
+		replacement = errorResp.Replacement
 	}
 
 	// Map status codes to appropriate errors
@@ -376,7 +394,8 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 		err = ErrNotFound
 	case 410:
 		err = ErrGone
-		// Provide helpful migration message for deprecated /pools endpoint
+		// Provide a helpful migration message for deprecated endpoints only
+		// when the API did not supply one of its own.
 		if errMsg == "" {
 			errMsg = "This endpoint has been deprecated. Please use network-specific endpoints instead.\n\nExamples:\n- client.Pools.ListByNetwork('ethereum', opts)\n- client.Pools.ListByNetwork('solana', opts)\n- client.Pools.ListByNetwork('fantom', opts)\n\nFor more information, visit: https://docs.dexpaprika.com/changelog/changelog"
 		}
@@ -394,9 +413,22 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 		}
 	}
 
+	// If the API advertised a replacement endpoint, surface it in the message
+	// for ANY error status. This keys on the presence of the "replacement"
+	// field rather than a specific status or endpoint, so future deprecations
+	// self-document without further SDK changes.
+	if replacement != "" {
+		if errMsg != "" {
+			errMsg = errMsg + " Use " + replacement + " instead."
+		} else {
+			errMsg = "Use " + replacement + " instead."
+		}
+	}
+
 	return &APIError{
 		StatusCode:  resp.StatusCode,
 		Message:     errMsg,
+		Replacement: replacement,
 		RawResponse: body,
 		Err:         err,
 	}
