@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.5.0] - 2026-06-30
+
+### Breaking Changes
+- **API CHANGE**: DexPaprika removed four REST endpoints (now HTTP 410) and replaced them with the unified search endpoints:
+  - `GET /networks/{network}/pools` and `GET /networks/{network}/pools/filter` -> `GET /networks/{network}/pools/search`
+  - `GET /networks/{network}/tokens/top` and `GET /networks/{network}/tokens/filter` -> `GET /networks/{network}/tokens/search`
+- `Pools.ListByNetwork()`, `Pools.Filter()`, `Tokens.GetTop()`, and `Tokens.Filter()` now target the search endpoints. Method signatures are unchanged.
+- The search endpoints are cursor-paginated and do not accept `page`. The `Page` option is still accepted for source compatibility but is no longer sent; use the new `Cursor` option (read from a response's `NextCursor`) to page.
+- Sorting now uses `order_by` (field) plus `sort` (direction). Filter methods no longer send `sort_by`/`sort_dir`. Legacy sort values and filter parameter names are mapped to canonical values automatically (the search endpoints reject legacy values with HTTP 400).
+- `Tokens.GetTop()` now returns the flat search row shape. `TopToken` is now an alias for `FilteredToken`; the legacy `name`, `symbol`, pool count, and nested timeframe metrics are no longer returned by the API. `TopTokenTimeMetrics` was removed.
+- `TokenFilterResponse` rows are now read from `results` (previously `data`).
+
+### Changed
+- Response types now expose cursor pagination: `PoolsResponse`, `PoolFilterResponse`, `TopTokensResponse`, and `TokenFilterResponse` carry `HasNextPage` and `NextCursor`. `ListByNetwork` exposes search rows via the existing `.Pools` field for backward compatibility.
+- Extended `Pool` with the search item fields `Transactions24h` and `PriceChangePercentage5m/1h/24h`.
+- Added `Cursor` to `ListOptions`, `PoolFilterOptions`, `TopTokensOptions`, and `TokenFilterOptions`.
+
 ## [1.4.0] - 2026-03-31
 
 ### Added

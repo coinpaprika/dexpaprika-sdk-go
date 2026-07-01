@@ -74,10 +74,11 @@ func TestTokensGetTop(t *testing.T) {
 	if token.Address == "" {
 		t.Fatal("Token missing address")
 	}
-	if token.Symbol == "" {
-		t.Fatal("Token missing symbol")
+	// tokens/search no longer returns name/symbol; price_usd is still present.
+	if token.PriceUSD == nil {
+		t.Fatal("Token missing price_usd")
 	}
-	t.Logf("Top token: %s at $%.4f", token.Symbol, *token.PriceUSD)
+	t.Logf("Top token: %s at $%.4f", token.Address[:10], *token.PriceUSD)
 }
 
 func TestTokensGetTopWithSort(t *testing.T) {
