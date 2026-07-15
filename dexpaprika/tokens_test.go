@@ -102,58 +102,61 @@ func TestTokens_GetPools(t *testing.T) {
 	}
 }
 
-func TestTokens_GetPoolsWithPair(t *testing.T) {
+func TestTokens_GetPoolsCursorPagination(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
 		WithRetryConfig(1, 1*time.Second, 2*time.Second),
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	// Test token pair pools (WETH-USDC on Ethereum)
 	tokenChain := "ethereum"
 	// #nosec G101
 	tokenAddress := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" // WETH
-	// #nosec G101
-	pairTokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // USDC
 
-	// Get pools for the token pair
-	opts := &TokenPoolsOptions{
-		ListOptions: &ListOptions{
-			Limit:   5,
-			OrderBy: "volume_usd",
-			Sort:    "desc",
-		},
-		AdditionalTokenAddress: pairTokenAddress,
-	}
-
-	pairPools, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, opts)
+	// The deprecated pair/reorder options must be ignored, not sent upstream.
+	firstPage, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, &TokenPoolsOptions{
+		ListOptions:            &ListOptions{Limit: 2},
+		AdditionalTokenAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // #nosec G101
+		Reorder:                true,
+	})
 	if err != nil {
-		t.Fatalf("Tokens.GetPools (with pair) returned error: %v", err)
+		t.Fatalf("Tokens.GetPools returned error: %v", err)
+	}
+	if len(firstPage.Pools) == 0 {
+		t.Fatal("Tokens.GetPools returned empty first page, expected pools for WETH")
+	}
+	if !firstPage.HasNextPage || firstPage.NextCursor == nil || *firstPage.NextCursor == "" {
+		t.Fatal("Tokens.GetPools first page has no next cursor, expected more WETH pools")
 	}
 
-	if pairPools == nil {
-		t.Fatal("Tokens.GetPools (with pair) returned nil, expected a PoolList")
+	// Follow the cursor and make sure we get a different page.
+	secondPage, err := client.Tokens.GetPools(ctx, tokenChain, tokenAddress, &TokenPoolsOptions{
+		ListOptions: &ListOptions{Limit: 2, Cursor: *firstPage.NextCursor},
+	})
+	if err != nil {
+		t.Fatalf("Tokens.GetPools (cursor) returned error: %v", err)
+	}
+	if len(secondPage.Pools) == 0 {
+		t.Fatal("Tokens.GetPools (cursor) returned empty page")
+	}
+	if secondPage.Pools[0].ID == firstPage.Pools[0].ID {
+		t.Errorf("Tokens.GetPools (cursor) returned the same first pool %s, expected the next page", secondPage.Pools[0].ID)
 	}
 
-	// All pools should contain both tokens
-	for _, pool := range pairPools.Pools {
-		firstTokenFound := false
-		secondTokenFound := false
-
+	// Every returned pool must still contain the requested token.
+	for _, pool := range append(firstPage.Pools, secondPage.Pools...) {
+		tokenFound := false
 		for _, token := range pool.Tokens {
 			if token.ID == tokenAddress {
-				firstTokenFound = true
-			}
-			if token.ID == pairTokenAddress {
-				secondTokenFound = true
+				tokenFound = true
+				break
 			}
 		}
-
-		if !firstTokenFound || !secondTokenFound {
-			t.Errorf("Tokens.GetPools (with pair) returned pool without both tokens: %s", pool.ID)
+		if !tokenFound {
+			t.Errorf("Tokens.GetPools returned pool without the specified token: %s", pool.ID)
 		}
 	}
 }

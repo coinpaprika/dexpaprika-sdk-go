@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0] - 2026-07-15
+
+### Breaking Changes
+- **API CHANGE**: DexPaprika removed `GET /networks/{network}/tokens/{address}/pools` (now HTTP 410). `Tokens.GetPools()` now targets `GET /networks/{network}/pools/search` with its new `token_address` parameter. The method signature is unchanged.
+- The token filter is network-scoped only: the cross-network `/pools/search` endpoint accepts `token_address` but silently ignores it, so `GetPools` still requires a network.
+- Pagination is cursor-based: `Page` is still accepted for source compatibility but is no longer sent; use `ListOptions.Cursor` (read from a response's `NextCursor`) to page. Sort fields are normalized to the canonical 24h names (legacy values are rejected by the endpoint with HTTP 400).
+- `TokenPoolsOptions.AdditionalTokenAddress` (pair queries) and `TokenPoolsOptions.Reorder` (pair-perspective flip) are deprecated and no longer sent: `/pools/search` has no equivalent for either, and repeating `token_address` is last-wins on the API side, not a pair filter. Filter pools client-side by their `Tokens` field to match a pair.
+- An unknown token address now returns HTTP 200 with an empty result set instead of an error.
+- `PoolsPaginator.ForToken` pages token pools by cursor; its `secondToken` argument is deprecated and ignored.
+
 ## [1.5.1] - 2026-07-01
 
 ### Changed
