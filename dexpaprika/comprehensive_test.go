@@ -126,12 +126,18 @@ func TestAllEndpoints(t *testing.T) {
 		case "/networks/ethereum/tokens/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48":
 			writeTestJSON(w, createMockToken("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "ethereum"))
 
-		case "/networks/ethereum/tokens/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48/pools":
+		case "/networks/ethereum/pools/search":
+			// Token pools now go through /pools/search with token_address.
+			if r.URL.Query().Get("token_address") != "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 			writeTestJSON(w, map[string]interface{}{
-				"pools": []map[string]interface{}{
+				"results": []map[string]interface{}{
 					createMockPool("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", "ethereum"),
 				},
-				"page_info": createPageInfo(20, 0, 1, 100),
+				"has_next_page": false,
+				"next_cursor":   "",
 			})
 
 		// Search endpoint
@@ -439,23 +445,13 @@ func testGetTokenDetails(t *testing.T, ctx context.Context, client *Client) {
 
 func testGetTokenPools(t *testing.T, ctx context.Context, client *Client) {
 	tokenAddress := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // #nosec G101 - This is a public token address, not a credential
-	req, err := client.NewRequest(http.MethodGet, "/networks/ethereum/tokens/"+tokenAddress+"/pools", nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	var resp map[string]interface{}
-	httpResp, err := client.Do(ctx, req, &resp)
+	resp, err := client.Tokens.GetPools(ctx, "ethereum", tokenAddress, nil)
 	if err != nil {
 		t.Fatalf("Failed to get token pools: %v", err)
 	}
-	if httpResp != nil && httpResp.Body != nil {
-		defer httpResp.Body.Close()
-	}
 
-	pools, ok := resp["pools"].([]interface{})
-	if !ok || len(pools) != 1 {
-		t.Errorf("Expected 1 pool, got %v", pools)
+	if len(resp.Pools) != 1 {
+		t.Errorf("Expected 1 pool, got %v", resp.Pools)
 	}
 }
 

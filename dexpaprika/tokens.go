@@ -74,16 +74,38 @@ func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress 
 }
 
 // TokenPoolsOptions contains options for retrieving token pools.
+//
+// Page is accepted for backward compatibility but is not sent to the
+// cursor-paginated /pools/search endpoint; use ListOptions.Cursor to page.
 type TokenPoolsOptions struct {
 	*ListOptions
-	// AdditionalTokenAddress filters pools that contain this additional token address
+	// AdditionalTokenAddress used to filter pools that also contain a second
+	// token (pair queries) on the removed token-pools endpoint.
+	//
+	// Deprecated: /pools/search has no pair filter and its token_address
+	// parameter is last-wins when repeated, so this option is no longer sent.
+	// Filter the returned pools client-side to match a pair.
 	AdditionalTokenAddress string
-	// Reorder reorders the pool so that the specified token becomes the primary token for all metrics
+	// Reorder used to flip the pool's pair perspective so the requested token
+	// became the primary token for all metrics.
+	//
+	// Deprecated: /pools/search has no equivalent, so this option is no longer
+	// sent. Metrics are returned from the pool's own perspective.
 	Reorder bool
 }
 
-// GetPools returns a list of top liquidity pools for a specific token on a network.
-// Implements the getTokenPools operation from the OpenAPI spec.
+// GetPools returns a list of top liquidity pools that contain a specific token
+// on a network.
+//
+// Since the DexPaprika API removed /networks/{network}/tokens/{address}/pools
+// (HTTP 410), this method targets the unified /networks/{network}/pools/search
+// endpoint with its token_address parameter. The filter is network-scoped
+// only: the cross-network /pools/search endpoint accepts token_address but
+// silently ignores it, so a network is always required here. The endpoint is
+// cursor-paginated and rejects legacy sort values, so the sort field is
+// normalized and the Page option is not sent upstream; pass ListOptions.Cursor
+// (taken from a previous response's NextCursor) to page. An unknown token
+// address returns an empty result set, not an error.
 func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress string, opts *TokenPoolsOptions) (*PoolsResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
@@ -92,39 +114,31 @@ func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress st
 		return nil, fmt.Errorf("token address is required")
 	}
 
-	path := fmt.Sprintf("/networks/%s/tokens/%s/pools", networkID, tokenAddress)
-
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, fmt.Sprintf("/networks/%s/pools/search", networkID), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	q := req.URL.Query()
-	if opts != nil {
-		if opts.ListOptions != nil {
-			if opts.Page > 0 {
-				q.Add("page", fmt.Sprintf("%d", opts.Page))
+	q.Add("token_address", tokenAddress)
+	orderBy := ""
+	if opts != nil && opts.ListOptions != nil {
+		orderBy = opts.OrderBy
+	}
+	q.Add("order_by", mapPoolSortField(orderBy))
+	if opts != nil && opts.ListOptions != nil {
+		if opts.Limit > 0 {
+			limit := opts.Limit
+			if limit > 100 {
+				limit = 100
 			}
-			if opts.Limit > 0 {
-				// Validate limit constraints (max 100 as per API v1.3.0)
-				limit := opts.Limit
-				if limit > 100 {
-					limit = 100
-				}
-				q.Add("limit", fmt.Sprintf("%d", limit))
-			}
-			if opts.Sort != "" {
-				q.Add("sort", opts.Sort)
-			}
-			if opts.OrderBy != "" {
-				q.Add("order_by", opts.OrderBy)
-			}
+			q.Add("limit", fmt.Sprintf("%d", limit))
 		}
-		if opts.AdditionalTokenAddress != "" {
-			q.Add("address", opts.AdditionalTokenAddress)
+		if opts.Sort != "" {
+			q.Add("sort", opts.Sort)
 		}
-		if opts.Reorder {
-			q.Add("reorder", "true")
+		if opts.Cursor != "" {
+			q.Add("cursor", opts.Cursor)
 		}
 	}
 	req.URL.RawQuery = q.Encode()
@@ -135,6 +149,11 @@ func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress st
 		return nil, err
 	}
 	defer r.Body.Close()
+
+	// /pools/search returns rows under "results"; expose them via .Pools.
+	if len(response.Pools) == 0 {
+		response.Pools = response.Results
+	}
 
 	return &response, nil
 }

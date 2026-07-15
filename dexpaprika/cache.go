@@ -258,25 +258,24 @@ func (c *CachedClient) GetTokenDetails(ctx context.Context, networkID, tokenAddr
 	return details, nil
 }
 
-// GetTokenPools retrieves token pools with caching
+// GetTokenPools retrieves token pools with caching.
+//
+// The underlying endpoint is the cursor-paginated /pools/search, so the cache
+// key is built from the options that are actually sent on the wire (limit,
+// sort, order_by, cursor). The deprecated AdditionalTokenAddress and Reorder
+// options are ignored.
 func (c *CachedClient) GetTokenPools(ctx context.Context, networkID, tokenAddress string, opts *TokenPoolsOptions) (*PoolsResponse, error) {
-	var optsPage, optsLimit int
-	var optsSort, optsOrderBy string
-	var additionalToken string
-	var reorder bool
+	var optsLimit int
+	var optsSort, optsOrderBy, optsCursor string
 
-	if opts != nil {
-		if opts.ListOptions != nil {
-			optsPage = opts.Page
-			optsLimit = opts.Limit
-			optsSort = opts.Sort
-			optsOrderBy = opts.OrderBy
-		}
-		additionalToken = opts.AdditionalTokenAddress
-		reorder = opts.Reorder
+	if opts != nil && opts.ListOptions != nil {
+		optsLimit = opts.Limit
+		optsSort = opts.Sort
+		optsOrderBy = opts.OrderBy
+		optsCursor = opts.Cursor
 	}
 
-	cacheKey := fmt.Sprintf("token_pools:%s:%s:%d:%d:%s:%s:%s:%t", networkID, tokenAddress, optsPage, optsLimit, optsSort, optsOrderBy, additionalToken, reorder)
+	cacheKey := fmt.Sprintf("token_pools:%s:%s:%d:%s:%s:%s", networkID, tokenAddress, optsLimit, optsSort, optsOrderBy, optsCursor)
 
 	// Try to get from cache first
 	if cachedValue, found := c.cache.Get(cacheKey); found {

@@ -327,26 +327,24 @@ transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xpool_addre
 // Get details about a specific token
 tokenDetails, err := client.Tokens.GetDetails(ctx, "ethereum", "0xtoken_address")
 
-// Get pools that contain a specific token
+// Get pools that contain a specific token.
+// This targets /networks/{network}/pools/search with token_address, so the
+// filter is network-scoped and results are cursor-paginated: pass
+// Cursor (from a response's NextCursor) to fetch the next page.
 tokenPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken_address", &dexpaprika.TokenPoolsOptions{
     ListOptions: &dexpaprika.ListOptions{
         Limit:   10,
-        OrderBy: "volume_usd",
+        OrderBy: "volume_usd_24h",
         Sort:    "desc",
     },
-})
-
-// Get pools that contain a pair of tokens with reordering
-pairPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken1_address", &dexpaprika.TokenPoolsOptions{
-    ListOptions: &dexpaprika.ListOptions{
-        Limit:   10,
-        OrderBy: "volume_usd",
-        Sort:    "desc",
-    },
-    AdditionalTokenAddress: "0xtoken2_address",
-    Reorder: true,
 })
 ```
+
+Note: the removed token-pools endpoint supported pair queries (a second token
+address) and metric reordering (`reorder`). `/pools/search` has no equivalent
+for either, so `AdditionalTokenAddress` and `Reorder` are deprecated and no
+longer sent. To restrict results to a pair, filter the returned pools
+client-side by their `Tokens` field.
 
 ### Pool Filtering
 

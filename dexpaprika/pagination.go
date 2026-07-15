@@ -24,11 +24,11 @@ type PoolsPaginator struct {
 	err         error
 }
 
-// isNetworkSearch reports whether this paginator fetches network pools via the
-// cursor-paginated /pools/search endpoint (as opposed to the page-based DEX-pool
-// or token-pool endpoints).
+// isNetworkSearch reports whether this paginator fetches pools via the
+// cursor-paginated /pools/search endpoint (network pools and token pools, as
+// opposed to the page-based DEX-pool endpoint).
 func (p *PoolsPaginator) isNetworkSearch() bool {
-	return p.networkID != "" && p.dexID == "" && p.tokenID == ""
+	return p.networkID != "" && p.dexID == ""
 }
 
 // NewPoolsPaginator creates a new paginator for pools
@@ -58,7 +58,11 @@ func (p *PoolsPaginator) ForDex(networkID, dexID string) *PoolsPaginator {
 	return p
 }
 
-// ForToken sets the paginator to fetch pools containing a specific token
+// ForToken sets the paginator to fetch pools containing a specific token.
+//
+// secondToken is deprecated and ignored: the /pools/search endpoint that now
+// backs token pools has no pair filter. Pass "" and filter client-side if a
+// pair is needed.
 func (p *PoolsPaginator) ForToken(networkID, tokenID string, secondToken string) *PoolsPaginator {
 	p.networkID = networkID
 	p.tokenID = tokenID
@@ -107,13 +111,10 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 	// Determine which API endpoint to call based on the set parameters
 	switch {
 	case p.tokenID != "":
-		// Token pools (page-based) - use new TokenPoolsOptions struct
-		if p.currentResp != nil {
-			p.options.Page++
-		}
+		// Token pools (cursor-based /pools/search with token_address)
+		p.options.Cursor = p.cursor
 		tokenOpts := &TokenPoolsOptions{
-			ListOptions:            p.options,
-			AdditionalTokenAddress: p.secondToken,
+			ListOptions: p.options,
 		}
 		resp, err = p.client.Tokens.GetPools(ctx, p.networkID, p.tokenID, tokenOpts)
 	case p.dexID != "":
