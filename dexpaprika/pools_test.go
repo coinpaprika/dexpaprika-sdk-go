@@ -226,135 +226,41 @@ func TestPools_GetOHLCV(t *testing.T) {
 }
 
 // TestPools_ListWithMock tests the List method with a mock server
-func TestPools_ListWithMock(t *testing.T) {
-	// Define test cases
-	tests := []struct {
-		name        string
-		opts        *ListOptions
-		response    string
-		statusCode  int
-		expectError bool
-		poolCount   int
-	}{
-		{
-			name:        "successful response with default options",
-			opts:        &ListOptions{},
-			response:    `{"pools": [{"id": "0x123", "dex_id": "uniswap", "chain": "ethereum"}, {"id": "0x456", "dex_id": "uniswap", "chain": "ethereum"}]}`,
-			statusCode:  http.StatusOK,
-			expectError: false,
-			poolCount:   2,
-		},
-		{
-			name:        "successful response with pagination",
-			opts:        &ListOptions{Page: 2, Limit: 5},
-			response:    `{"pools": [{"id": "0x789", "dex_id": "uniswap", "chain": "ethereum"}]}`,
-			statusCode:  http.StatusOK,
-			expectError: false,
-			poolCount:   1,
-		},
-		{
-			name:        "successful response with sorting",
-			opts:        &ListOptions{OrderBy: "volume_usd", Sort: "desc"},
-			response:    `{"pools": [{"id": "0xabc", "dex_id": "uniswap", "chain": "ethereum", "volume_usd": 1000000}]}`,
-			statusCode:  http.StatusOK,
-			expectError: false,
-			poolCount:   1,
-		},
-		{
-			name:        "server error",
-			opts:        &ListOptions{},
-			response:    `{"error": "Internal server error"}`,
-			statusCode:  http.StatusInternalServerError,
-			expectError: true,
-			poolCount:   0,
-		},
+func TestPools_ListReturnsGoneClientSide(t *testing.T) {
+	// List must fail client-side without issuing any HTTP request: the global
+	// /pools endpoint was removed (HTTP 410) in API v1.3.0.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("List should not issue an HTTP request, but it hit %s", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.Pools.List(ctx, &ListOptions{Limit: 5})
+	if err == nil {
+		t.Fatal("expected a deprecation error from List, got nil")
 	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Create a test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Check that the request is for the pools endpoint
-				if r.URL.Path != "/pools" {
-					t.Errorf("Expected request to '/pools', got '%s'", r.URL.Path)
-				}
-
-				// Check query parameters if options are provided
-				if tc.opts != nil {
-					// Check page parameter
-					if tc.opts.Page > 0 {
-						page := r.URL.Query().Get("page")
-						expectedPage := fmt.Sprintf("%d", tc.opts.Page)
-						if page != expectedPage {
-							t.Errorf("Expected page parameter to be '%s', got '%s'", expectedPage, page)
-						}
-					}
-
-					// Check limit parameter
-					if tc.opts.Limit > 0 {
-						limit := r.URL.Query().Get("limit")
-						expectedLimit := fmt.Sprintf("%d", tc.opts.Limit)
-						if limit != expectedLimit {
-							t.Errorf("Expected limit parameter to be '%s', got '%s'", expectedLimit, limit)
-						}
-					}
-
-					// Check orderBy parameter
-					if tc.opts.OrderBy != "" {
-						orderBy := r.URL.Query().Get("order_by")
-						if orderBy != tc.opts.OrderBy {
-							t.Errorf("Expected order_by parameter to be '%s', got '%s'", tc.opts.OrderBy, orderBy)
-						}
-					}
-
-					// Check sort parameter
-					if tc.opts.Sort != "" {
-						sort := r.URL.Query().Get("sort")
-						if sort != tc.opts.Sort {
-							t.Errorf("Expected sort parameter to be '%s', got '%s'", tc.opts.Sort, sort)
-						}
-					}
-				}
-
-				// Set response headers
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(tc.statusCode)
-				fmt.Fprintln(w, tc.response)
-			}))
-			defer server.Close()
-
-			// Create a client that uses the test server
-			client := NewClient(
-				WithBaseURL(server.URL),
-				WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond), // No retries for faster tests
-			)
-
-			// Create a context with timeout
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			// Call the List method
-			poolsResp, err := client.Pools.List(ctx, tc.opts)
-
-			// Check error
-			if tc.expectError && err == nil {
-				t.Error("Expected an error but got nil")
-			}
-			if !tc.expectError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
-
-			// If we don't expect an error, check the results
-			if !tc.expectError && err == nil {
-				if poolsResp == nil {
-					t.Fatal("Expected non-nil pools response but got nil")
-				}
-
-				if len(poolsResp.Pools) != tc.poolCount {
-					t.Errorf("Expected %d pools, got %d", tc.poolCount, len(poolsResp.Pools))
-				}
-			}
-		})
+	if resp != nil {
+		t.Errorf("expected a nil response, got %+v", resp)
+	}
+	if !errors.Is(err, ErrGone) {
+		t.Errorf("expected errors.Is(err, ErrGone) to be true, got %v", err)
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected an *APIError, got %T", err)
+	}
+	if apiErr.StatusCode != http.StatusGone {
+		t.Errorf("expected status code 410, got %d", apiErr.StatusCode)
+	}
+	if apiErr.Replacement == "" {
+		t.Error("expected a replacement endpoint hint on the error")
 	}
 }
 

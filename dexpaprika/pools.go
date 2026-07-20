@@ -146,24 +146,17 @@ func addOptions(s string, opts interface{}) (string, error) {
 //	pools, err := client.Pools.ListByNetwork(ctx, "ethereum", opts)
 //	pools, err := client.Pools.ListByNetwork(ctx, "solana", opts)
 func (s *PoolsService) List(ctx context.Context, opts *ListOptions) (*PoolsResponse, error) {
-	path, err := addOptions("/pools", opts)
-	if err != nil {
-		return nil, err
+	// The global /pools endpoint was removed in API v1.3.0 (HTTP 410). Rather
+	// than issue a request that always fails, fail client-side with the same
+	// structured error the server would have returned, so callers get an
+	// immediate, actionable message: errors.Is(err, ErrGone) reports true and
+	// errors.As(err, &APIError{}) exposes StatusCode 410 and the replacement.
+	return nil, &APIError{
+		StatusCode:  http.StatusGone,
+		Message:     "the /pools endpoint was removed in API v1.3.0; use ListByNetwork(ctx, networkID, opts) for a specific network",
+		Replacement: "/networks/{network}/pools/search",
+		Err:         ErrGone,
 	}
-
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var response PoolsResponse
-	r, err := s.client.Do(ctx, req, &response)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Body.Close()
-
-	return &response, nil
 }
 
 // ListByNetwork returns a list of top pools on a specific network.
