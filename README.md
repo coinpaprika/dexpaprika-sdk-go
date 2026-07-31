@@ -235,10 +235,14 @@ for paginator.HasNextPage() {
     // Process the current page
     pools := paginator.GetCurrentPage()
     for _, pool := range pools {
-        fmt.Printf("Pool: %s on %s (Volume: $%.2f)\n", 
-            pool.DexName, 
-            pool.Chain, 
-            pool.VolumeUSD)
+        vol24h := 0.0
+        if pool.VolumeUSD24h != nil {
+            vol24h = *pool.VolumeUSD24h
+        }
+        fmt.Printf("Pool: %s on %s (24h Volume: $%.2f)\n",
+            pool.DexName,
+            pool.Chain,
+            vol24h)
     }
 }
 ```
