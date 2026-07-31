@@ -19,7 +19,7 @@ go get github.com/coinpaprika/dexpaprika-sdk-go
 ## Requirements
 
 - Go 1.24 or higher
-- No API key required (service is in public beta)
+- No API key required to start. A free key or a paid plan raises the quota, see https://docs.dexpaprika.com/knowledge-base/rate-limits
 
 ## Testing the SDK
 
