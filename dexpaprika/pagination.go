@@ -46,8 +46,9 @@ func (p *PoolsPaginator) ForNetwork(networkID string) *PoolsPaginator {
 
 // ForDex sets the paginator to fetch pools for a specific DEX on a network.
 //
-// dexID is sent as the dex_name filter on /pools/search, which accepts both the
-// DEX id ("curve") and the display name ("Curve"). Prefer the id.
+// dexID is sent as the dex_name filter on /pools/search, which matches the DEX
+// id case-insensitively. Pass Dex.ID from Networks.ListDexes ("uniswap_v3"), not
+// Dex.Name ("Uniswap V3"): a display name yields an empty result set, not an error.
 func (p *PoolsPaginator) ForDex(networkID, dexID string) *PoolsPaginator {
 	p.networkID = networkID
 	p.dexID = dexID

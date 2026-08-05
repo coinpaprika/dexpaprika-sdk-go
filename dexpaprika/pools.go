@@ -216,9 +216,11 @@ func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts
 //
 // The DexPaprika API removed /networks/{network}/dexes/{dex}/pools (HTTP 410),
 // so this method targets the unified /networks/{network}/pools/search endpoint
-// and passes the DEX through the dex_name query parameter. dex_name resolves
-// both the DEX id ("curve") and the display name ("Curve"); prefer the id,
-// which is what Networks.ListDexes returns as Dex.ID.
+// and passes the DEX through the dex_name query parameter. Despite that name,
+// the filter matches the DEX id, case-insensitively, so dexID must be what
+// Networks.ListDexes returns as Dex.ID ("uniswap_v3"), not Dex.Name
+// ("Uniswap V3"). A display name returns HTTP 200 with an empty result set
+// rather than an error, so a wrong value here fails silently.
 //
 // That endpoint is cursor-paginated and rejects the legacy sort values, so the
 // sort field is normalized and the Page option is not sent upstream. Pass

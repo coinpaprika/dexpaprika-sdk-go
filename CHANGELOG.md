@@ -4,7 +4,7 @@
 
 ### Breaking Changes
 - **API CHANGE**: DexPaprika removed `GET /networks/{network}/dexes/{dex}/pools` (now HTTP 410). `Pools.ListByDex()` now targets `GET /networks/{network}/pools/search` and sends the DEX as the `dex_name` query parameter. The method signature is unchanged.
-- `dex_name` accepts both the DEX id (`curve`) and the display name (`Curve`). Pass the id, which is what `Networks.ListDexes` returns as `Dex.ID`.
+- Despite its name, `dex_name` matches the DEX **id** (case-insensitively), which is what `Networks.ListDexes` returns as `Dex.ID`. Passing a human display name such as `Uniswap V3` (the `Dex.Name` field) returns HTTP 200 with an empty result set instead of an error, so a wrong value here fails silently.
 - Pagination is cursor-based: `ListOptions.Page` is still accepted for source compatibility but is no longer sent; use `ListOptions.Cursor` (read from a response's `NextCursor`) to page. Sort fields are normalized to the canonical 24h names, since the endpoint rejects legacy values with HTTP 400.
 - `PoolsPaginator.ForDex` pages DEX pools by cursor instead of by page number.
 - Rows arrive under `results` rather than `pools`, and there is no `page_info`. `PoolsResponse.PageInfo` is deprecated and stays at its zero value for every pools listing.

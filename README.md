@@ -344,8 +344,11 @@ for callers:
   `Transactions` and the `LastPriceChangeUSD*` fields are no longer sent at all;
   use `Transactions24h` and the `PriceChangePercentage*` fields.
 
-`dex_name` accepts either the DEX id (`curve`) or the display name (`Curve`).
-Prefer the id, which is what `Networks.ListDexes` returns as `Dex.ID`.
+Despite its name, `dex_name` matches the DEX id, case-insensitively: `curve`,
+`CURVE` and `uniswap_v3` all work. It does not match the human display name.
+Pass `Dex.ID` from `Networks.ListDexes`, never `Dex.Name`: a display name such as
+`Uniswap V3` returns HTTP 200 with an empty result set instead of an error, so
+the mistake looks like a DEX with no pools.
 
 ### Tokens
 
