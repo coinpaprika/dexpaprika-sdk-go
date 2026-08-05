@@ -76,13 +76,12 @@ type Pool struct {
 // /pools/search returns rows under "results" with cursor-based
 // HasNextPage/NextCursor. ListByNetwork, ListByDex and Tokens.GetPools all copy
 // those rows into Pools so callers keep reading .Pools.
-//
-// Deprecated: PageInfo. The removed page-based pools endpoints filled it; the
-// search endpoint sends no page_info, so it is always the zero value. Page with
-// Cursor and HasNextPage instead.
 type PoolsResponse struct {
-	Pools       []Pool   `json:"pools"`
-	Results     []Pool   `json:"results,omitempty"`
+	Pools   []Pool `json:"pools"`
+	Results []Pool `json:"results,omitempty"`
+	// Deprecated: the removed page-based pools endpoints filled this; the search
+	// endpoint sends no page_info, so it is always the zero value. Page with
+	// Cursor and HasNextPage instead.
 	PageInfo    PageInfo `json:"page_info"`
 	HasNextPage bool     `json:"has_next_page,omitempty"`
 	NextCursor  *string  `json:"next_cursor,omitempty"`
@@ -107,10 +106,10 @@ func normalizePoolsResponse(resp *PoolsResponse) {
 }
 
 // ListOptions contains common options for listing pools.
-//
-// Deprecated: Page. Every pools listing now targets the cursor-paginated
-// /pools/search endpoint, which ignores it; use Cursor to fetch the next page.
 type ListOptions struct {
+	// Deprecated: every pools listing now targets the cursor-paginated
+	// /pools/search endpoint, which ignores this field. Use Cursor to fetch the
+	// next page.
 	Page    int
 	Limit   int
 	Sort    string
