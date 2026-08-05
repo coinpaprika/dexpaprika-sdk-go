@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Breaking Changes
+- **API CHANGE**: DexPaprika removed `GET /networks/{network}/dexes/{dex}/pools` (now HTTP 410). `Pools.ListByDex()` now targets `GET /networks/{network}/pools/search` and sends the DEX as the `dex_name` query parameter. The method signature is unchanged.
+- `dex_name` accepts both the DEX id (`curve`) and the display name (`Curve`). Pass the id, which is what `Networks.ListDexes` returns as `Dex.ID`.
+- Pagination is cursor-based: `ListOptions.Page` is still accepted for source compatibility but is no longer sent; use `ListOptions.Cursor` (read from a response's `NextCursor`) to page. Sort fields are normalized to the canonical 24h names, since the endpoint rejects legacy values with HTTP 400.
+- `PoolsPaginator.ForDex` pages DEX pools by cursor instead of by page number.
+- Rows arrive under `results` rather than `pools`, and there is no `page_info`. `PoolsResponse.PageInfo` is deprecated and stays at its zero value for every pools listing.
+
+### Changed
+- `Pool.VolumeUSD` is deprecated. No pools endpoint returns a bare `volume_usd` any more; the SDK copies `volume_usd_24h` into it so existing callers keep reading a real number. Read `Pool.VolumeUSD24h` in new code.
+- `Pool.Transactions` and the `Pool.LastPriceChangeUSD*` fields are deprecated and no longer populated. Use `Pool.Transactions24h` and the `Pool.PriceChangePercentage*` fields.
+
+### Added
+- `Pool.PriceChangePercentage6h`, which `/pools/search` returns but the SDK was dropping.
+
 ## [1.6.0] - 2026-07-15
 
 ### Breaking Changes

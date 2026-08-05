@@ -307,8 +307,15 @@ networkPools, err := client.Pools.ListByNetwork(ctx, "ethereum", &dexpaprika.Lis
     Sort:    "desc",
 })
 
-// Get pools on a specific DEX
-dexPools, err := client.Pools.ListByDex(ctx, "ethereum", "uniswap_v3", opts)
+// Get pools on a specific DEX.
+// /networks/{network}/dexes/{dex}/pools was removed (HTTP 410), so this now
+// targets /pools/search with a dex_name filter. It is cursor-paginated: pass
+// Cursor (from a response's NextCursor) to fetch the next page.
+dexPools, err := client.Pools.ListByDex(ctx, "ethereum", "uniswap_v3", &dexpaprika.ListOptions{
+    Limit:   10,
+    OrderBy: "volume_usd_24h",
+    Sort:    "desc",
+})
 
 // Get details about a specific pool
 poolDetails, err := client.Pools.GetDetails(ctx, "ethereum", "0xpool_address", false)
@@ -324,6 +331,21 @@ ohlcv, err := client.Pools.GetOHLCV(ctx, "ethereum", "0xpool_address", &dexpapri
 // Get transactions for a pool
 transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xpool_address", 0, 10, "")
 ```
+
+Note on DEX pools: the API removed `/networks/{network}/dexes/{dex}/pools` and it
+now answers HTTP 410. `Pools.ListByDex` keeps the same signature but sends the DEX
+as the `dex_name` filter on `/networks/{network}/pools/search`. Two consequences
+for callers:
+
+- Pagination is cursor-based. `Page` is ignored, use `Cursor` and read
+  `HasNextPage` / `NextCursor`.
+- The response has no bare `volume_usd`. Read `VolumeUSD24h`. The SDK copies it
+  into the deprecated `VolumeUSD` field so older code keeps working, but
+  `Transactions` and the `LastPriceChangeUSD*` fields are no longer sent at all;
+  use `Transactions24h` and the `PriceChangePercentage*` fields.
+
+`dex_name` accepts either the DEX id (`curve`) or the display name (`Curve`).
+Prefer the id, which is what `Networks.ListDexes` returns as `Dex.ID`.
 
 ### Tokens
 
