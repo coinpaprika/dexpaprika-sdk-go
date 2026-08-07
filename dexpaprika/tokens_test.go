@@ -2,6 +2,10 @@ package dexpaprika
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -234,5 +238,49 @@ func TestTokens_ValidationErrors(t *testing.T) {
 	_, err = client.Tokens.GetPools(ctx, "ethereum", "", nil)
 	if err == nil || err.Error() != "token address is required" {
 		t.Errorf("Expected 'token address is required' error, got: %v", err)
+	}
+}
+
+// TestTokens_FilterSendsPriceChangeBounds covers the one price-change window
+// tokens/search actually honours. I originally wrote all four off as pool-only,
+// which was wrong: 24h works on both endpoints, only 6h, 1h and 5m are
+// pool-only. Checked live, and the bound is real rather than ignored:
+//
+//	no filter                          [95.7, -0.07, 0.23, -0.02, 0.4]
+//	price_change_percentage_24h_min=20 [95.7, 36.62, 15876.53, 22.96, 32.88]
+//	misspelled name                    [95.7, -0.07, 0.23, -0.02, 0.4]
+func TestTokens_FilterSendsPriceChangeBounds(t *testing.T) {
+	var got string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"results":[],"has_next_page":false}`)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	min24h := 20.0
+	max24h := -20.0
+	_, err := client.Tokens.Filter(ctx, "ethereum", &TokenFilterOptions{
+		PriceChange24hMin: &min24h,
+		PriceChange24hMax: &max24h,
+	})
+	if err != nil {
+		t.Fatalf("Filter returned error: %v", err)
+	}
+
+	for _, want := range []string{
+		"price_change_percentage_24h_min=20",
+		"price_change_percentage_24h_max=-20",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("query %q is missing %q", got, want)
+		}
 	}
 }
