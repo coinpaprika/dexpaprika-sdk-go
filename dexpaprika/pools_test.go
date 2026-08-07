@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -488,5 +489,71 @@ func TestPools_ValidationErrors(t *testing.T) {
 	_, err = client.Pools.GetTransactions(ctx, "ethereum", "", 0, 10, "")
 	if err == nil || err.Error() != "pool address is required" {
 		t.Errorf("Expected 'pool address is required' error, got: %v", err)
+	}
+}
+
+// TestPools_FilterSendsPriceChangeBounds pins the wire format of the
+// price-change filters. They are worth a test because a mistake here is
+// invisible from the response: /pools/search ignores query parameters it does
+// not recognize and answers 200, so a misspelled or dropped bound returns a
+// full, plausible, unfiltered result set.
+func TestPools_FilterSendsPriceChangeBounds(t *testing.T) {
+	var got string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"results":[],"has_next_page":false}`)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	min1h := 50.0
+	max5m := -20.0
+	_, err := client.Pools.Filter(ctx, "ethereum", &PoolFilterOptions{
+		SortBy:           "price_change_percentage_1h",
+		PriceChange1hMin: &min1h,
+		PriceChange5mMax: &max5m,
+	})
+	if err != nil {
+		t.Fatalf("Filter returned error: %v", err)
+	}
+
+	for _, want := range []string{
+		"order_by=price_change_percentage_1h",
+		"price_change_percentage_1h_min=50",
+		// Negative bounds are the whole point of a max on a price change, and
+		// they are also where a naive %f formatter would produce -20.000000.
+		"price_change_percentage_5m_max=-20",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("query %q is missing %q", got, want)
+		}
+	}
+}
+
+// TestSortFieldWindowsArePoolOnly guards the asymmetry between the two search
+// endpoints. Verified against api.dexpaprika.com on 2026-08-07: /pools/search
+// lists the three shorter windows in its 400 body, /tokens/search does not, and
+// token rows carry no price_change_percentage_5m field at all. Sending one to
+// tokens/search is a 400, so the fallback to volume_usd_24h is the correct
+// behaviour rather than an oversight.
+func TestSortFieldWindowsArePoolOnly(t *testing.T) {
+	for _, field := range []string{
+		"price_change_percentage_6h",
+		"price_change_percentage_1h",
+		"price_change_percentage_5m",
+	} {
+		if got := mapPoolSortField(field); got != field {
+			t.Errorf("mapPoolSortField(%q) = %q, want it passed through", field, got)
+		}
+		if got := mapTokenSortField(field); got != "volume_usd_24h" {
+			t.Errorf("mapTokenSortField(%q) = %q, want the volume_usd_24h fallback", field, got)
+		}
 	}
 }
