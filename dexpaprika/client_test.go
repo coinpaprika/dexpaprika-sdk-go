@@ -654,3 +654,84 @@ func TestIsRetryable(t *testing.T) {
 		})
 	}
 }
+
+// TestClient_HonoursRetryAfter covers both shapes DexPaprika uses to say "come
+// back later". A keyed request gets a Retry-After header; a keyless one gets a
+// 429 with the delay only in the JSON body. Before this, neither was read, so
+// the client backed off on its own ladder and retried well before it was
+// allowed to, spending another request on the same 429.
+func TestClient_HonoursRetryAfter(t *testing.T) {
+	cases := []struct {
+		name  string
+		reply func(w http.ResponseWriter)
+	}{
+		{
+			name: "Retry-After header",
+			reply: func(w http.ResponseWriter) {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"error":"rate_limited"}`))
+			},
+		},
+		{
+			name: "retry_after in the body",
+			reply: func(w http.ResponseWriter) {
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"error":"rate_limited","tier":"keyless","retry_after":1}`))
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if calls == 1 {
+					tc.reply(w)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"results":[],"has_next_page":false}`))
+			}))
+			defer server.Close()
+
+			// retryWaitMax of a millisecond is the point: the client's own
+			// ladder would come back almost immediately, so anything at or past
+			// the requested second can only come from reading the server's
+			// answer.
+			client := NewClient(
+				WithBaseURL(server.URL),
+				WithRetryConfig(2, time.Millisecond, time.Millisecond),
+			)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			start := time.Now()
+			_, err := client.Pools.Filter(ctx, "ethereum", &PoolFilterOptions{Limit: 1})
+			elapsed := time.Since(start)
+
+			if err != nil {
+				t.Fatalf("Filter returned error: %v", err)
+			}
+			if calls != 2 {
+				t.Fatalf("server saw %d calls, want 2 (one 429 then one success)", calls)
+			}
+			if elapsed < time.Second {
+				t.Errorf("retried after %v, but the server asked for 1s", elapsed)
+			}
+		})
+	}
+}
+
+// TestRetryAfter_ReadsNothingWhenServerSaysNothing keeps the fallback honest: a
+// response with no Retry-After and no retry_after must not invent a delay, or
+// every retryable error would start costing a second.
+func TestRetryAfter_ReadsNothingWhenServerSaysNothing(t *testing.T) {
+	resp := &http.Response{Header: http.Header{}}
+	for _, body := range []string{`{"error":"boom"}`, `not json at all`, ``} {
+		if d := retryAfter(resp, []byte(body)); d != 0 {
+			t.Errorf("retryAfter(%q) = %v, want 0", body, d)
+		}
+	}
+}

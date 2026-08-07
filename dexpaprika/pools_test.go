@@ -14,7 +14,7 @@ import (
 func TestPools_List(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -52,7 +52,7 @@ func TestPools_List(t *testing.T) {
 func TestPools_ListByNetwork(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -87,7 +87,7 @@ func TestPools_ListByNetwork(t *testing.T) {
 func TestPools_ListByDex(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -103,28 +103,28 @@ func TestPools_ListByDex(t *testing.T) {
 		Sort:    "desc",
 	}
 
+	// /networks/{network}/dexes/{dex}/pools was removed and answers 410. This
+	// test asserted a successful listing until 2026-08-07, when it started
+	// failing on main with no change on our side. The SDK behaviour is right:
+	// it surfaces the removal as a typed error carrying the replacement path.
+	// The expectation was what went stale.
 	pools, err := client.Pools.ListByDex(ctx, networkID, dexID, poolsOpts)
-	if err != nil {
-		t.Fatalf("Pools.ListByDex returned error: %v", err)
+	var deprecated *APIError
+	if !errors.As(err, &deprecated) || deprecated.StatusCode != 410 {
+		t.Fatalf("Pools.ListByDex error = %v, want a 410 APIError", err)
 	}
-
-	if pools == nil {
-		t.Fatal("Pools.ListByDex returned nil, expected a PoolList")
+	if !strings.Contains(deprecated.Replacement, "pools/search") {
+		t.Errorf("replacement = %q, want it to point at pools/search", deprecated.Replacement)
 	}
-
-	// All pools should be on the specified network and DEX
-	for _, pool := range pools.Pools {
-		if pool.Chain != networkID {
-			t.Errorf("Pools.ListByDex returned pool with wrong chain: got %s, want %s", pool.Chain, networkID)
-		}
-		// DEX names might not exactly match the DEX ID, so we don't check this strictly
+	if pools != nil {
+		t.Errorf("Pools.ListByDex returned %v alongside the removal error, want nil", pools)
 	}
 }
 
 func TestPools_GetDetails(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -176,7 +176,7 @@ func TestPools_GetDetails(t *testing.T) {
 func TestPools_GetOHLCV(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout

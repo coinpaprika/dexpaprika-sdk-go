@@ -56,7 +56,7 @@ func TestInMemoryCache(t *testing.T) {
 func TestCachedClient(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
@@ -126,7 +126,7 @@ func TestCachedClient_WithCustomCache(t *testing.T) {
 func TestCachedClient_GetTokenDetails(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
@@ -173,7 +173,7 @@ func TestCachedClient_GetTokenDetails(t *testing.T) {
 func TestCachedClient_GetPoolDetails(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client
@@ -220,7 +220,7 @@ func TestCachedClient_GetPoolDetails(t *testing.T) {
 func TestCachedClient_GetDexes(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
@@ -267,7 +267,7 @@ func TestCachedClient_GetDexes(t *testing.T) {
 func TestCachedClient_GetPools(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
@@ -316,7 +316,7 @@ func TestCachedClient_GetPools(t *testing.T) {
 func TestCachedClient_GetNetworkPools(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
@@ -373,7 +373,7 @@ func TestCachedClient_GetNetworkPools(t *testing.T) {
 func TestCachedClient_GetTokenPools(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
@@ -441,7 +441,7 @@ func TestCachedClient_GetTokenPools(t *testing.T) {
 func TestCachedClient_GetStats(t *testing.T) {
 	// Create a standard client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client with a short TTL for testing
