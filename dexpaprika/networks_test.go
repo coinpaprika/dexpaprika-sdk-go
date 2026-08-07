@@ -9,7 +9,7 @@ import (
 func TestNetworks_List(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -40,7 +40,7 @@ func TestNetworks_List(t *testing.T) {
 func TestNetworks_ListDexes(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -90,7 +90,7 @@ func TestNetworks_ListDexes(t *testing.T) {
 func TestCachedClient_Networks(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client

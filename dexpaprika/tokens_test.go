@@ -13,7 +13,7 @@ import (
 func TestTokens_GetDetails(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -56,7 +56,7 @@ func TestTokens_GetDetails(t *testing.T) {
 func TestTokens_GetPools(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -109,7 +109,7 @@ func TestTokens_GetPools(t *testing.T) {
 func TestTokens_GetPoolsCursorPagination(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -168,7 +168,7 @@ func TestTokens_GetPoolsCursorPagination(t *testing.T) {
 func TestCachedClient_Tokens(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a cached client

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -21,6 +22,11 @@ const (
 	DefaultTimeout = 30 * time.Second
 	// DefaultMaxRetries is the default number of retry attempts
 	DefaultMaxRetries = 3
+	// MaxServerRequestedWait caps how long we will honour a server-supplied
+	// retry delay. The API has asked for 32 seconds on a free key, which is
+	// worth waiting out, but an unbounded value from the wire should never be
+	// able to park a caller's goroutine indefinitely.
+	MaxServerRequestedWait = 60 * time.Second
 	// DefaultRetryWaitMin is the minimum amount of time to wait between retries
 	DefaultRetryWaitMin = 1 * time.Second
 	// DefaultRetryWaitMax is the maximum amount of time to wait between retries
@@ -262,6 +268,11 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 	}
 
 	// Retry logic
+	// serverDelay carries a Retry-After the server sent on the previous attempt.
+	// Without it the client backs off on its own schedule, which loses every
+	// race it was told how to win: the default ladder tops out at retryWaitMax,
+	// and a 429 routinely asks for longer than that.
+	var serverDelay time.Duration
 	for i := 0; i <= c.maxRetries; i++ {
 		if i > 0 {
 			// Calculate backoff duration
@@ -269,6 +280,15 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 			if backoff > c.retryWaitMax {
 				backoff = c.retryWaitMax
 			}
+			// The server's own number wins when it is longer. Retrying earlier
+			// than asked just spends another request on the same 429.
+			if serverDelay > backoff {
+				backoff = serverDelay
+				if backoff > MaxServerRequestedWait {
+					backoff = MaxServerRequestedWait
+				}
+			}
+			serverDelay = 0
 
 			// Wait with backoff
 			timer := time.NewTimer(backoff)
@@ -326,6 +346,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 
 			// If it's a retryable error, and we haven't hit max retries, try again
 			if IsRetryable(apiErr) && i < c.maxRetries {
+				serverDelay = retryAfter(resp, respBody)
 				continue
 			}
 
@@ -354,6 +375,40 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 }
 
 // createAPIError creates an appropriate APIError based on the HTTP status code
+// retryAfter reports how long the server asked us to wait before trying again,
+// or zero when it did not say.
+//
+// Two shapes, because DexPaprika uses both. A request carrying an API key gets
+// a standard Retry-After header (observed: "retry-after: 32"). A keyless
+// request gets a 429 with no such header and the delay only in the JSON body
+// (observed: {"error":"rate_limited","tier":"keyless","retry_after":3}). Both
+// were captured off api.dexpaprika.com on 2026-08-07.
+//
+// Retry-After also permits an HTTP-date, so that form is parsed too rather than
+// silently treated as zero.
+func retryAfter(resp *http.Response, body []byte) time.Duration {
+	if resp != nil {
+		if raw := resp.Header.Get("Retry-After"); raw != "" {
+			if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+				return time.Duration(secs) * time.Second
+			}
+			if when, err := http.ParseTime(raw); err == nil {
+				if d := time.Until(when); d > 0 {
+					return d
+				}
+			}
+		}
+	}
+
+	var payload struct {
+		RetryAfter float64 `json:"retry_after"`
+	}
+	if err := json.Unmarshal(body, &payload); err == nil && payload.RetryAfter > 0 {
+		return time.Duration(payload.RetryAfter * float64(time.Second))
+	}
+	return 0
+}
+
 func createAPIError(resp *http.Response, body []byte) *APIError {
 	var errMsg string
 	var replacement string

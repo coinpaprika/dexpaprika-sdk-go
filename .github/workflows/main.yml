@@ -38,8 +38,14 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v7
 
-      - name: Run unit tests with
-        run: make run-example
+      # This job is named Test and ran `make run-example` until 2026-08-07,
+      # which builds and runs a sample program. The Makefile has always had a
+      # `test` target with the real suite behind it. The effect was a green
+      # tick on every push while five tests were failing on main, so the badge
+      # said more than the pipeline knew.
+      - name: Run tests
+        run: make test
+
 
   build:
     name: Build
