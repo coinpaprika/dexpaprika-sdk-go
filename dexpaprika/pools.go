@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // PoolsService handles communication with the pools related
@@ -517,6 +518,17 @@ type PoolFilterOptions struct {
 	Txns24hMin    *int
 	CreatedAfter  string
 	CreatedBefore string
+
+	// Price-change bounds, in percent. Negative values are meaningful: set
+	// PriceChange24hMax to -20 to find pools down at least a fifth on the day.
+	PriceChange24hMin *float64
+	PriceChange24hMax *float64
+	PriceChange6hMin  *float64
+	PriceChange6hMax  *float64
+	PriceChange1hMin  *float64
+	PriceChange1hMax  *float64
+	PriceChange5mMin  *float64
+	PriceChange5mMax  *float64
 }
 
 // PoolFilterResponse represents the response from the /pools/search endpoint.
@@ -582,6 +594,20 @@ func (s *PoolsService) Filter(ctx context.Context, networkID string, opts *PoolF
 		}
 		if opts.Txns24hMin != nil {
 			q.Add("txns_24h_min", fmt.Sprintf("%d", *opts.Txns24hMin))
+		}
+		for name, value := range map[string]*float64{
+			"price_change_percentage_24h_min": opts.PriceChange24hMin,
+			"price_change_percentage_24h_max": opts.PriceChange24hMax,
+			"price_change_percentage_6h_min":  opts.PriceChange6hMin,
+			"price_change_percentage_6h_max":  opts.PriceChange6hMax,
+			"price_change_percentage_1h_min":  opts.PriceChange1hMin,
+			"price_change_percentage_1h_max":  opts.PriceChange1hMax,
+			"price_change_percentage_5m_min":  opts.PriceChange5mMin,
+			"price_change_percentage_5m_max":  opts.PriceChange5mMax,
+		} {
+			if value != nil {
+				q.Add(name, strconv.FormatFloat(*value, 'f', -1, 64))
+			}
 		}
 		if opts.CreatedAfter != "" {
 			q.Add("created_after", opts.CreatedAfter)

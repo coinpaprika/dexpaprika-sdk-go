@@ -11,7 +11,7 @@ import (
 func TestPoolsPaginator(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -53,7 +53,7 @@ func TestPoolsPaginator(t *testing.T) {
 func TestPoolsPaginator_ForNetwork(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -91,7 +91,7 @@ func TestPoolsPaginator_ForNetwork(t *testing.T) {
 func TestDexesPaginator(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -133,7 +133,7 @@ func TestDexesPaginator(t *testing.T) {
 func TestTransactionsPaginator(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -184,7 +184,7 @@ func TestTransactionsPaginator(t *testing.T) {
 func TestPoolsPaginator_ForDex(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -212,25 +212,27 @@ func TestPoolsPaginator_ForDex(t *testing.T) {
 		t.Errorf("ForDex() dexID = %q, want %q", paginator.dexID, dexID)
 	}
 
-	// Fetch page
+	// The endpoint behind ForDex was removed and answers 410, so the paginator
+	// cannot fetch. What is still worth pinning is that it fails the same way
+	// the direct call does, with the replacement path attached, rather than
+	// returning an empty page that reads as "this DEX has no pools".
 	err = paginator.GetNextPage(ctx)
-	if err != nil {
-		t.Fatalf("GetNextPage() error = %v", err)
+	var deprecated *APIError
+	if !errors.As(err, &deprecated) || deprecated.StatusCode != 410 {
+		t.Fatalf("GetNextPage() error = %v, want a 410 APIError", err)
 	}
-
-	// Verify we got results
-	pools := paginator.GetCurrentPage()
-	if len(pools) == 0 {
-		t.Skip("No pools returned for the dex, cannot fully test")
+	if !strings.Contains(deprecated.Replacement, "pools/search") {
+		t.Errorf("replacement = %q, want it to point at pools/search", deprecated.Replacement)
 	}
-
-	t.Logf("Found %d pools for dex %s on %s", len(pools), dexID, networkID)
+	if pools := paginator.GetCurrentPage(); len(pools) != 0 {
+		t.Errorf("GetCurrentPage() returned %d pools after a removal error, want 0", len(pools))
+	}
 }
 
 func TestPoolsPaginator_ForToken(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout
@@ -311,7 +313,7 @@ func TestPaginator_GetError(t *testing.T) {
 func TestTransactionsPaginator_GetErrorWithBadNetwork(t *testing.T) {
 	// Create a client with test settings
 	client := NewClient(
-		WithRetryConfig(1, 1*time.Second, 2*time.Second),
+		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
 	// Create a context with timeout

@@ -36,7 +36,12 @@ func mapPoolSortField(field string) string {
 		"txns_24h",
 		"created_at",
 		"price_usd",
-		"price_change_percentage_24h":
+		"price_change_percentage_24h",
+		// Shorter windows, pools only. tokens/search does not carry them and
+		// mapTokenSortField deliberately does not list them.
+		"price_change_percentage_6h",
+		"price_change_percentage_1h",
+		"price_change_percentage_5m":
 		return field
 	default:
 		return defaultSearchSortField

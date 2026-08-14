@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -270,6 +271,14 @@ type TokenFilterOptions struct {
 	Txns24hMin    *int
 	CreatedAfter  string
 	CreatedBefore string
+
+	// The 24h window is the only price-change bound tokens/search honours, in
+	// percent. Negatives are meaningful: PriceChange24hMax of -20 finds tokens
+	// down at least a fifth on the day. The 6h, 1h and 5m bounds that
+	// PoolFilterOptions carries are absent here on purpose, because token rows
+	// have no such fields and the endpoint ignores those parameters.
+	PriceChange24hMin *float64
+	PriceChange24hMax *float64
 }
 
 // Filter returns tokens on a network filtered by volume, liquidity, FDV, transactions, and creation date.
@@ -325,6 +334,12 @@ func (s *TokensService) Filter(ctx context.Context, networkID string, opts *Toke
 		}
 		if opts.Txns24hMin != nil {
 			q.Add("txns_24h_min", fmt.Sprintf("%d", *opts.Txns24hMin))
+		}
+		if opts.PriceChange24hMin != nil {
+			q.Add("price_change_percentage_24h_min", strconv.FormatFloat(*opts.PriceChange24hMin, 'f', -1, 64))
+		}
+		if opts.PriceChange24hMax != nil {
+			q.Add("price_change_percentage_24h_max", strconv.FormatFloat(*opts.PriceChange24hMax, 'f', -1, 64))
 		}
 		if opts.CreatedAfter != "" {
 			q.Add("created_after", opts.CreatedAfter)
