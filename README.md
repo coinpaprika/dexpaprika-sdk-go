@@ -162,6 +162,46 @@ func main() {
 }
 ```
 
+## Using an API key (optional)
+
+**The SDK works without a key and always will.** No signup, no card. Everything
+below is optional.
+
+A free key raises the monthly credit allowance. It does **not** raise the
+per-minute request limit, which is the same on both free tiers. Current figures
+are on the [rate limits page](https://docs.dexpaprika.com/knowledge-base/rate-limits).
+
+```go
+// Explicit
+client := dexpaprika.NewClient(dexpaprika.WithAPIKey("api_your_key_here"))
+
+// Or leave it out and set DEXPAPRIKA_API_KEY in the environment
+client := dexpaprika.NewClient()
+```
+
+`WithAPIKey` beats the environment variable, and no key at all keeps the previous
+keyless behaviour unchanged.
+
+**There is no `Bearer` prefix.** The key is sent as the entire `Authorization`
+value, which is what the API expects; a scheme word returns 401. You never write
+the header yourself, so this only matters when debugging what went out.
+
+**Pro customers** also set the base URL, because the host does not change on its
+own. Free keys are served from the default host and sending one to the Pro host
+returns 403, so the switch has to be deliberate:
+
+```go
+client := dexpaprika.NewClient(
+    dexpaprika.WithAPIKey("api_your_pro_key"),
+    dexpaprika.WithBaseURL("https://api-pro.dexpaprika.com"),
+)
+```
+
+**One gotcha worth knowing.** On the data endpoints a key the API cannot read is
+ignored rather than rejected: the call returns `200` with real data and you are
+quietly served as an anonymous caller. To confirm a key is landing, call `/usage`
+and check the `plan` field; `keyless` means the key never arrived.
+
 ## Advanced Configuration
 
 ```go

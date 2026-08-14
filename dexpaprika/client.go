@@ -11,13 +11,27 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 const (
-	// DefaultBaseURL is the default DexPaprika API endpoint
+	// DefaultBaseURL is the default DexPaprika API endpoint.
+	//
+	// It serves keyless callers and registered free keys alike. Only Pro moves to
+	// api-pro.dexpaprika.com, selected with WithBaseURL. The host is never
+	// inferred from the presence of a key: sending a free key to the Pro host
+	// returns 403, so guessing would break the people who just registered.
 	DefaultBaseURL = "https://api.dexpaprika.com"
+
+	// Version of this SDK, reported in the User-Agent. Keep in step with the git
+	// tag; the module proxy serves tags, not this constant.
+	Version = "1.8.0"
+
+	// APIKeyEnvVar is consulted when no key is passed to NewClient.
+	APIKeyEnvVar = "DEXPAPRIKA_API_KEY"
 	// DefaultTimeout is the default timeout for API requests
 	DefaultTimeout = 30 * time.Second
 	// DefaultMaxRetries is the default number of retry attempts
@@ -43,6 +57,9 @@ type Client struct {
 
 	// User agent for client
 	userAgent string
+
+	// Optional API key. Empty means keyless, which is the default and works.
+	apiKey string
 
 	// Retry configuration
 	maxRetries   int
@@ -82,6 +99,32 @@ func WithBaseURL(baseURL string) ClientOption {
 	}
 }
 
+// WithAPIKey sets the API key sent with every request.
+//
+// Optional. Without one the client is keyless, which works and needs no signup.
+// An explicit key here beats the DEXPAPRIKA_API_KEY environment variable.
+//
+// The key is sent as the entire Authorization value. There is no "Bearer" prefix
+// and no other scheme word: the API checksums the raw header, so a scheme word
+// returns 401. This is the most common reason a working key looks broken.
+func WithAPIKey(apiKey string) ClientOption {
+	return func(c *Client) {
+		c.apiKey = sanitizeAPIKey(apiKey)
+	}
+}
+
+// sanitizeAPIKey trims a key and rejects anything that could break out of a
+// header. A key carrying CR, LF or NUL is dropped rather than mangled: a mangled
+// key authenticates as nobody, and because the data endpoints ignore an
+// unreadable key instead of rejecting it, the caller would never find out.
+func sanitizeAPIKey(key string) string {
+	key = strings.TrimSpace(key)
+	if strings.ContainsAny(key, "\r\n\x00") {
+		return ""
+	}
+	return key
+}
+
 // WithUserAgent sets the user agent for the API client
 func WithUserAgent(userAgent string) ClientOption {
 	return func(c *Client) {
@@ -116,8 +159,12 @@ func NewClient(options ...ClientOption) *Client {
 		client: &http.Client{
 			Timeout: DefaultTimeout,
 		},
-		baseURL:      baseURL,
-		userAgent:    "DexPaprika-SDK-Go",
+		baseURL: baseURL,
+		// Was the bare string "DexPaprika-SDK-Go", which said the SDK was in use
+		// but never which version.
+		userAgent: "DexPaprika-SDK-Go/" + Version,
+		// Env fallback applied before options, so WithAPIKey overrides it.
+		apiKey:       sanitizeAPIKey(os.Getenv(APIKeyEnvVar)),
 		maxRetries:   DefaultMaxRetries,
 		retryWaitMin: DefaultRetryWaitMin,
 		retryWaitMax: DefaultRetryWaitMax,
@@ -182,6 +229,10 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", c.userAgent)
+	if c.apiKey != "" {
+		// The whole value, with no scheme word in front of it.
+		req.Header.Set("Authorization", c.apiKey)
+	}
 
 	return req, nil
 }
