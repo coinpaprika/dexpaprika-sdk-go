@@ -212,20 +212,21 @@ func TestPoolsPaginator_ForDex(t *testing.T) {
 		t.Errorf("ForDex() dexID = %q, want %q", paginator.dexID, dexID)
 	}
 
-	// The endpoint behind ForDex was removed and answers 410, so the paginator
-	// cannot fetch. What is still worth pinning is that it fails the same way
-	// the direct call does, with the replacement path attached, rather than
-	// returning an empty page that reads as "this DEX has no pools".
-	err = paginator.GetNextPage(ctx)
-	var deprecated *APIError
-	if !errors.As(err, &deprecated) || deprecated.StatusCode != 410 {
-		t.Fatalf("GetNextPage() error = %v, want a 410 APIError", err)
+	// ForDex used to answer 410: it called the removed
+	// /networks/{network}/dexes/{dex}/pools. It now goes through
+	// /pools/search with a dex_name filter, so the paginator fetches again.
+	// This test asserted the 410 between 2026-08-07 and this change.
+	if err := paginator.GetNextPage(ctx); err != nil {
+		t.Fatalf("GetNextPage() error = %v, want a page", err)
 	}
-	if !strings.Contains(deprecated.Replacement, "pools/search") {
-		t.Errorf("replacement = %q, want it to point at pools/search", deprecated.Replacement)
+	pools := paginator.GetCurrentPage()
+	if len(pools) == 0 {
+		t.Fatal("GetCurrentPage() returned no pools, want at least one")
 	}
-	if pools := paginator.GetCurrentPage(); len(pools) != 0 {
-		t.Errorf("GetCurrentPage() returned %d pools after a removal error, want 0", len(pools))
+	for _, pool := range pools {
+		if pool.DexID != dexID {
+			t.Errorf("paginator returned a pool from %q, want only %q", pool.DexID, dexID)
+		}
 	}
 }
 
