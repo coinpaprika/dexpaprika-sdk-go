@@ -20,15 +20,8 @@ type PoolsPaginator struct {
 	secondToken string // Optional, for filtering token pairs
 	options     *ListOptions
 	currentResp *PoolsResponse
-	cursor      string // Cursor for the cursor-paginated network /pools/search endpoint
+	cursor      string // Cursor for the cursor-paginated /pools/search endpoint
 	err         error
-}
-
-// isNetworkSearch reports whether this paginator fetches pools via the
-// cursor-paginated /pools/search endpoint (network pools and token pools, as
-// opposed to the page-based DEX-pool endpoint).
-func (p *PoolsPaginator) isNetworkSearch() bool {
-	return p.networkID != "" && p.dexID == ""
 }
 
 // NewPoolsPaginator creates a new paginator for pools
@@ -51,7 +44,11 @@ func (p *PoolsPaginator) ForNetwork(networkID string) *PoolsPaginator {
 	return p
 }
 
-// ForDex sets the paginator to fetch pools for a specific DEX on a network
+// ForDex sets the paginator to fetch pools for a specific DEX on a network.
+//
+// dexID is sent as the dex_name filter on /pools/search, which matches the DEX
+// id case-insensitively. Pass Dex.ID from Networks.ListDexes ("uniswap_v3"), not
+// Dex.Name ("Uniswap V3"): a display name yields an empty result set, not an error.
 func (p *PoolsPaginator) ForDex(networkID, dexID string) *PoolsPaginator {
 	p.networkID = networkID
 	p.dexID = dexID
@@ -80,23 +77,10 @@ func (p *PoolsPaginator) HasNextPage() bool {
 		return false
 	}
 
-	// The network /pools/search endpoint is cursor-paginated and reports whether
-	// more pages exist directly.
-	if p.isNetworkSearch() {
-		return p.currentResp.HasNextPage
-	}
-
-	// Check if we've received fewer items than requested, indicating last page
-	if len(p.currentResp.Pools) < p.options.Limit {
-		return false
-	}
-
-	// Or if the API explicitly tells us there are no more pages
-	if p.currentResp.PageInfo.Page+1 >= p.currentResp.PageInfo.TotalPages {
-		return false
-	}
-
-	return true
+	// Network pools, DEX pools and token pools all read from the cursor-paginated
+	// /pools/search endpoint, whose envelope reports directly whether more pages
+	// exist. No pools path is page-based any more.
+	return p.currentResp.HasNextPage
 }
 
 // GetNextPage fetches the next page of results
@@ -118,10 +102,8 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 		}
 		resp, err = p.client.Tokens.GetPools(ctx, p.networkID, p.tokenID, tokenOpts)
 	case p.dexID != "":
-		// DEX pools (page-based)
-		if p.currentResp != nil {
-			p.options.Page++
-		}
+		// DEX pools (cursor-based /pools/search with dex_name)
+		p.options.Cursor = p.cursor
 		resp, err = p.client.Pools.ListByDex(ctx, p.networkID, p.dexID, p.options)
 	case p.networkID != "":
 		// Network pools (cursor-based /pools/search)
@@ -140,13 +122,11 @@ func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 
 	p.currentResp = resp
 
-	// Track the cursor for the next page of a network search.
-	if p.isNetworkSearch() {
-		if resp != nil && resp.NextCursor != nil {
-			p.cursor = *resp.NextCursor
-		} else {
-			p.cursor = ""
-		}
+	// Track the cursor for the next page.
+	if resp != nil && resp.NextCursor != nil {
+		p.cursor = *resp.NextCursor
+	} else {
+		p.cursor = ""
 	}
 
 	return nil

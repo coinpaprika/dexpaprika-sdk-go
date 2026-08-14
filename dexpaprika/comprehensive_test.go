@@ -69,14 +69,6 @@ func TestAllEndpoints(t *testing.T) {
 				"page_info": createPageInfo(50, 0, 2, 100),
 			})
 
-		case "/networks/ethereum/dexes/uniswap_v2/pools":
-			writeTestJSON(w, map[string]interface{}{
-				"pools": []map[string]interface{}{
-					createMockPool("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", "ethereum"),
-				},
-				"page_info": createPageInfo(25, 0, 1, 100),
-			})
-
 		case "/networks/ethereum/pools/0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc":
 			writeTestJSON(w, createMockPoolDetails("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", "ethereum"))
 
@@ -127,18 +119,28 @@ func TestAllEndpoints(t *testing.T) {
 			writeTestJSON(w, createMockToken("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "ethereum"))
 
 		case "/networks/ethereum/pools/search":
-			// Token pools now go through /pools/search with token_address.
-			if r.URL.Query().Get("token_address") != "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" {
+			// Token pools and DEX pools now both go through /pools/search, the
+			// first filtered by token_address and the second by dex_name.
+			switch {
+			case r.URL.Query().Get("token_address") == "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48":
+				writeTestJSON(w, map[string]interface{}{
+					"results": []map[string]interface{}{
+						createMockSearchPool("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", "ethereum", "uniswap_v2", "Uniswap V2"),
+					},
+					"has_next_page": false,
+					"next_cursor":   "",
+				})
+			case r.URL.Query().Get("dex_name") == "uniswap_v2":
+				writeTestJSON(w, map[string]interface{}{
+					"results": []map[string]interface{}{
+						createMockSearchPool("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", "ethereum", "uniswap_v2", "Uniswap V2"),
+					},
+					"has_next_page": false,
+					"next_cursor":   "",
+				})
+			default:
 				w.WriteHeader(http.StatusBadRequest)
-				return
 			}
-			writeTestJSON(w, map[string]interface{}{
-				"results": []map[string]interface{}{
-					createMockPool("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc", "ethereum"),
-				},
-				"has_next_page": false,
-				"next_cursor":   "",
-			})
 
 		// Search endpoint
 		case "/search":
@@ -217,8 +219,8 @@ func TestAllEndpoints(t *testing.T) {
 		testGetNetworkPools(t, ctx, client)
 	})
 
-	t.Run("GetDexPools", func(t *testing.T) {
-		testGetDexPools(t, ctx, client)
+	t.Run("GetDexPoolsViaPoolsSearch", func(t *testing.T) {
+		testGetDexPoolsViaPoolsSearch(t, ctx, client)
 	})
 
 	t.Run("GetPoolDetails", func(t *testing.T) {
@@ -335,8 +337,10 @@ func testGetNetworkPools(t *testing.T, ctx context.Context, client *Client) {
 	}
 }
 
-func testGetDexPools(t *testing.T, ctx context.Context, client *Client) {
-	req, err := client.NewRequest(http.MethodGet, "/networks/ethereum/dexes/uniswap_v2/pools", nil)
+func testGetDexPoolsViaPoolsSearch(t *testing.T, ctx context.Context, client *Client) {
+	// /networks/{network}/dexes/{dex}/pools was removed (HTTP 410). DEX pools
+	// come from /pools/search with dex_name, under "results".
+	req, err := client.NewRequest(http.MethodGet, "/networks/ethereum/pools/search?dex_name=uniswap_v2", nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
@@ -350,9 +354,12 @@ func testGetDexPools(t *testing.T, ctx context.Context, client *Client) {
 		defer httpResp.Body.Close()
 	}
 
-	pools, ok := resp["pools"].([]interface{})
+	pools, ok := resp["results"].([]interface{})
 	if !ok || len(pools) != 1 {
-		t.Errorf("Expected 1 pool, got %v", pools)
+		t.Errorf("Expected 1 pool under results, got %v", pools)
+	}
+	if _, ok := resp["page_info"]; ok {
+		t.Error("pools/search must not carry page_info")
 	}
 }
 
@@ -528,6 +535,44 @@ func createMockPool(id string, chain string) map[string]interface{} {
 				"chain":    chain,
 				"decimals": 18,
 				"added_at": "2024-12-02T13:00:16.000Z",
+			},
+		},
+	}
+}
+
+// createMockSearchPool mirrors a row from /networks/{network}/pools/search.
+// The field set is copied from a live response captured on 2026-08-05: no bare
+// "volume_usd", no "transactions", 24h volume under "volume_usd_24h", and the
+// price moves under "price_change_percentage_*".
+func createMockSearchPool(id, chain, dexID, dexName string) map[string]interface{} {
+	return map[string]interface{}{
+		"id":                          id,
+		"dex_id":                      dexID,
+		"dex_name":                    dexName,
+		"chain":                       chain,
+		"volume_usd_24h":              15883391.558251368,
+		"created_at":                  "2025-01-25T17:20:47Z",
+		"created_at_block_number":     21702976,
+		"transactions_24h":            289,
+		"price_usd":                   0.9995787501356217,
+		"price_change_percentage_5m":  nil,
+		"price_change_percentage_1h":  0.02422482089565938,
+		"price_change_percentage_6h":  0.009802157529374174,
+		"price_change_percentage_24h": 0.007018797950998323,
+		"fee":                         nil,
+		"volume_usd_7d":               31781851.73428885,
+		"volume_usd_30d":              136889876.39037386,
+		"liquidity_usd":               7407910.088430515,
+		"tokens": []map[string]interface{}{
+			{
+				"id":        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+				"chain":     chain,
+				"has_image": true,
+			},
+			{
+				"id":        "0xdac17f958d2ee523a2206206994597c13d831ec7",
+				"chain":     chain,
+				"has_image": true,
 			},
 		},
 	}

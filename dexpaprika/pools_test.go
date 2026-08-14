@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -103,21 +104,148 @@ func TestPools_ListByDex(t *testing.T) {
 		Sort:    "desc",
 	}
 
-	// /networks/{network}/dexes/{dex}/pools was removed and answers 410. This
-	// test asserted a successful listing until 2026-08-07, when it started
-	// failing on main with no change on our side. The SDK behaviour is right:
-	// it surfaces the removal as a typed error carrying the replacement path.
-	// The expectation was what went stale.
 	pools, err := client.Pools.ListByDex(ctx, networkID, dexID, poolsOpts)
-	var deprecated *APIError
-	if !errors.As(err, &deprecated) || deprecated.StatusCode != 410 {
-		t.Fatalf("Pools.ListByDex error = %v, want a 410 APIError", err)
+	if err != nil {
+		t.Fatalf("Pools.ListByDex returned error: %v", err)
 	}
-	if !strings.Contains(deprecated.Replacement, "pools/search") {
-		t.Errorf("replacement = %q, want it to point at pools/search", deprecated.Replacement)
+
+	if pools == nil {
+		t.Fatal("Pools.ListByDex returned nil, expected a PoolList")
 	}
-	if pools != nil {
-		t.Errorf("Pools.ListByDex returned %v alongside the removal error, want nil", pools)
+
+	// All pools should be on the specified network and DEX. The dex_name filter
+	// resolves the DEX id, so every row must carry it back.
+	for _, pool := range pools.Pools {
+		if pool.Chain != networkID {
+			t.Errorf("Pools.ListByDex returned pool with wrong chain: got %s, want %s", pool.Chain, networkID)
+		}
+		if pool.DexID != dexID {
+			t.Errorf("Pools.ListByDex returned pool from the wrong DEX: got %s, want %s", pool.DexID, dexID)
+		}
+	}
+}
+
+// TestPools_ListByDexTargetsPoolsSearch pins the request ListByDex puts on the
+// wire. The old path /networks/{network}/dexes/{dex}/pools returns HTTP 410, so
+// the DEX has to travel as the dex_name query parameter on /pools/search.
+func TestPools_ListByDexTargetsPoolsSearch(t *testing.T) {
+	var gotPath string
+	var gotQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		// Field names copied from a live /pools/search response captured on
+		// 2026-08-05: rows under "results", 24h volume as "volume_usd_24h",
+		// cursor pagination, and no page_info.
+		fmt.Fprint(w, `{"results":[{"id":"0x4f493b7de8aac7d55f71853688b1f7c8f0243c85","dex_id":"curve","dex_name":"Curve","chain":"ethereum","volume_usd_24h":15883391.558251368,"transactions_24h":289,"price_usd":0.9995787501356217,"price_change_percentage_6h":0.009802157529374174,"volume_usd_7d":31781851.73428885,"liquidity_usd":7407910.088430515}],"has_next_page":true,"next_cursor":"eyJjaGFpbiI6ImV0aGVyZXVtIn0","query":{"network":"ethereum","dex_name":"curve"}}`)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.Pools.ListByDex(ctx, "ethereum", "curve", &ListOptions{
+		Limit:   1,
+		Page:    7,
+		OrderBy: "volume_usd",
+		Sort:    "desc",
+	})
+	if err != nil {
+		t.Fatalf("ListByDex returned error: %v", err)
+	}
+
+	if want := "/networks/ethereum/pools/search"; gotPath != want {
+		t.Errorf("ListByDex requested %q, want %q", gotPath, want)
+	}
+	if got := gotQuery.Get("dex_name"); got != "curve" {
+		t.Errorf("dex_name = %q, want %q", got, "curve")
+	}
+	// The legacy page parameter must not travel: /pools/search is cursor-based.
+	if gotQuery.Has("page") {
+		t.Errorf("ListByDex sent page=%q, but /pools/search is cursor-paginated", gotQuery.Get("page"))
+	}
+	// Legacy sort values are rejected upstream with HTTP 400, so order_by is
+	// normalized to the canonical field name.
+	if got := gotQuery.Get("order_by"); got != "volume_usd_24h" {
+		t.Errorf("order_by = %q, want %q", got, "volume_usd_24h")
+	}
+
+	if len(resp.Results) != 1 {
+		t.Fatalf("expected 1 row under Results, got %d", len(resp.Results))
+	}
+	if len(resp.Pools) != 1 {
+		t.Fatalf("expected Results to be exposed via Pools, got %d rows", len(resp.Pools))
+	}
+	pool := resp.Pools[0]
+	if pool.DexID != "curve" {
+		t.Errorf("DexID = %q, want %q", pool.DexID, "curve")
+	}
+	if pool.VolumeUSD24h == nil || *pool.VolumeUSD24h != 15883391.558251368 {
+		t.Errorf("VolumeUSD24h = %v, want 15883391.558251368", pool.VolumeUSD24h)
+	}
+	// volume_usd is gone from the wire; the SDK backfills it from volume_usd_24h
+	// so callers written against the removed endpoint keep reading a real number.
+	if pool.VolumeUSD != 15883391.558251368 {
+		t.Errorf("VolumeUSD = %v, want it backfilled from volume_usd_24h", pool.VolumeUSD)
+	}
+	if pool.Transactions24h != 289 {
+		t.Errorf("Transactions24h = %d, want 289", pool.Transactions24h)
+	}
+	if pool.PriceChangePercentage6h == nil || *pool.PriceChangePercentage6h != 0.009802157529374174 {
+		t.Errorf("PriceChangePercentage6h = %v, want 0.009802157529374174", pool.PriceChangePercentage6h)
+	}
+
+	if !resp.HasNextPage {
+		t.Error("expected HasNextPage to be true")
+	}
+	if resp.NextCursor == nil || *resp.NextCursor != "eyJjaGFpbiI6ImV0aGVyZXVtIn0" {
+		t.Errorf("NextCursor = %v, want the cursor from the envelope", resp.NextCursor)
+	}
+	if resp.PageInfo.TotalPages != 0 {
+		t.Errorf("PageInfo should stay zero, /pools/search sends no page_info, got %+v", resp.PageInfo)
+	}
+}
+
+// TestPools_ListByDexSurfacesGone checks that a 410 from the removed path still
+// reaches the caller as a typed error carrying the replacement endpoint, in case
+// an older SDK build or a proxy is still pointed at it.
+func TestPools_ListByDexSurfacesGone(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusGone)
+		fmt.Fprint(w, `{"code":410,"message":"endpoint removed","replacement":"/networks/{network}/pools/search"}`)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.Pools.ListByDex(ctx, "ethereum", "curve", nil)
+	if err == nil {
+		t.Fatal("expected an error for a 410 response, got nil")
+	}
+	if !errors.Is(err, ErrGone) {
+		t.Errorf("expected errors.Is(err, ErrGone) to be true, got %v", err)
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected an *APIError, got %T", err)
+	}
+	if apiErr.StatusCode != http.StatusGone {
+		t.Errorf("expected status code 410, got %d", apiErr.StatusCode)
+	}
+	if apiErr.Replacement != "/networks/{network}/pools/search" {
+		t.Errorf("Replacement = %q, want the endpoint from the response body", apiErr.Replacement)
 	}
 }
 

@@ -151,10 +151,7 @@ func (s *TokensService) GetPools(ctx context.Context, networkID, tokenAddress st
 	}
 	defer r.Body.Close()
 
-	// /pools/search returns rows under "results"; expose them via .Pools.
-	if len(response.Pools) == 0 {
-		response.Pools = response.Results
-	}
+	normalizePoolsResponse(&response)
 
 	return &response, nil
 }

@@ -32,25 +32,35 @@ type Token struct {
 }
 
 // Pool represents a liquidity pool.
+//
+// Every pools listing in this SDK now reads from /networks/{network}/pools/search,
+// so the field set below is the one that endpoint returns. The fields marked
+// Deprecated came from endpoints that have been removed and are no longer on the
+// wire; see the notes on each.
 type Pool struct {
-	ID                    string   `json:"id"`
-	DexID                 string   `json:"dex_id"`
-	DexName               string   `json:"dex_name"`
-	Chain                 string   `json:"chain"`
-	VolumeUSD             float64  `json:"volume_usd"`
-	CreatedAt             string   `json:"created_at"`
-	CreatedAtBlockNumber  int64    `json:"created_at_block_number"`
-	Transactions          int      `json:"transactions"`
-	PriceUSD              float64  `json:"price_usd"`
+	ID      string `json:"id"`
+	DexID   string `json:"dex_id"`
+	DexName string `json:"dex_name"`
+	Chain   string `json:"chain"`
+	// Deprecated: no pools endpoint returns a bare "volume_usd" any more.
+	// /pools/search reports 24h volume as VolumeUSD24h, which the SDK copies
+	// into this field so existing callers keep reading a real number instead of
+	// a silent zero. Read VolumeUSD24h in new code.
+	VolumeUSD            float64 `json:"volume_usd"`
+	CreatedAt            string  `json:"created_at"`
+	CreatedAtBlockNumber int64   `json:"created_at_block_number"`
+	// Deprecated: /pools/search returns Transactions24h instead. This field
+	// stays zero.
+	Transactions int     `json:"transactions"`
+	PriceUSD     float64 `json:"price_usd"`
+	// Deprecated: /pools/search returns the PriceChangePercentage* fields
+	// instead. These stay nil.
 	LastPriceChangeUSD5m  *float64 `json:"last_price_change_usd_5m"`
 	LastPriceChangeUSD1h  *float64 `json:"last_price_change_usd_1h"`
 	LastPriceChangeUSD24h *float64 `json:"last_price_change_usd_24h"`
 	Fee                   *float64 `json:"fee"`
 	Tokens                []Token  `json:"tokens"`
-	// VolumeUSD/Transactions/LastPriceChangeUSD* are returned by the DEX-pools and
-	// token-pools endpoints. The /pools/search endpoint instead returns the
-	// timeframe-split and percentage-named fields below; whichever endpoint
-	// produced this value leaves the other set nil/zero.
+
 	VolumeUSD24h             *float64 `json:"volume_usd_24h,omitempty"`
 	VolumeUSD7d              *float64 `json:"volume_usd_7d,omitempty"`
 	VolumeUSD30d             *float64 `json:"volume_usd_30d,omitempty"`
@@ -58,28 +68,49 @@ type Pool struct {
 	Transactions24h          int      `json:"transactions_24h,omitempty"`
 	PriceChangePercentage5m  *float64 `json:"price_change_percentage_5m,omitempty"`
 	PriceChangePercentage1h  *float64 `json:"price_change_percentage_1h,omitempty"`
+	PriceChangePercentage6h  *float64 `json:"price_change_percentage_6h,omitempty"`
 	PriceChangePercentage24h *float64 `json:"price_change_percentage_24h,omitempty"`
 }
 
 // PoolsResponse represents the response for the pools endpoints.
 //
-// The DEX-pools and token-pools endpoints return rows under "pools" with
-// page-based PageInfo. The /pools/search endpoint (used by ListByNetwork)
-// returns rows under "results" with cursor-based HasNextPage/NextCursor;
-// ListByNetwork copies those rows into Pools so callers keep reading .Pools.
+// /pools/search returns rows under "results" with cursor-based
+// HasNextPage/NextCursor. ListByNetwork, ListByDex and Tokens.GetPools all copy
+// those rows into Pools so callers keep reading .Pools.
 type PoolsResponse struct {
-	Pools       []Pool   `json:"pools"`
-	Results     []Pool   `json:"results,omitempty"`
+	Pools   []Pool `json:"pools"`
+	Results []Pool `json:"results,omitempty"`
+	// Deprecated: the removed page-based pools endpoints filled this; the search
+	// endpoint sends no page_info, so it is always the zero value. Page with
+	// Cursor and HasNextPage instead.
 	PageInfo    PageInfo `json:"page_info"`
 	HasNextPage bool     `json:"has_next_page,omitempty"`
 	NextCursor  *string  `json:"next_cursor,omitempty"`
 }
 
+// normalizePoolsResponse adapts a /pools/search payload to the field names
+// older callers read. The endpoint returns rows under "results" rather than
+// "pools", and reports 24h volume as "volume_usd_24h" rather than the bare
+// "volume_usd" the removed endpoints used, so both legacy names are backfilled.
+func normalizePoolsResponse(resp *PoolsResponse) {
+	if resp == nil {
+		return
+	}
+	if len(resp.Pools) == 0 {
+		resp.Pools = resp.Results
+	}
+	for i := range resp.Pools {
+		if resp.Pools[i].VolumeUSD == 0 && resp.Pools[i].VolumeUSD24h != nil {
+			resp.Pools[i].VolumeUSD = *resp.Pools[i].VolumeUSD24h
+		}
+	}
+}
+
 // ListOptions contains common options for listing pools.
-//
-// Page is honored only by the legacy/DEX-pool endpoints. The cursor-paginated
-// /pools/search endpoint ignores Page; use Cursor to fetch the next page.
 type ListOptions struct {
+	// Deprecated: every pools listing now targets the cursor-paginated
+	// /pools/search endpoint, which ignores this field. Use Cursor to fetch the
+	// next page.
 	Page    int
 	Limit   int
 	Sort    string
@@ -101,36 +132,6 @@ func validatePoolAddress(poolAddress string) error {
 		return fmt.Errorf("pool address is required")
 	}
 	return nil
-}
-
-// addOptions adds the parameters in opts as URL query parameters to s.
-func addOptions(s string, opts interface{}) (string, error) {
-	v := url.Values{}
-
-	if o, ok := opts.(*ListOptions); ok {
-		if o.Page > 0 {
-			v.Add("page", fmt.Sprintf("%d", o.Page))
-		}
-		if o.Limit > 0 {
-			// Validate limit constraints (max 100 as per API v1.3.0)
-			limit := o.Limit
-			if limit > 100 {
-				limit = 100
-			}
-			v.Add("limit", fmt.Sprintf("%d", limit))
-		}
-		if o.Sort != "" {
-			v.Add("sort", o.Sort)
-		}
-		if o.OrderBy != "" {
-			v.Add("order_by", o.OrderBy)
-		}
-	}
-
-	if len(v) > 0 {
-		return s + "?" + v.Encode(), nil
-	}
-	return s, nil
 }
 
 // List returns a list of top pools from all networks.
@@ -207,16 +208,24 @@ func (s *PoolsService) ListByNetwork(ctx context.Context, networkID string, opts
 	}
 	defer r.Body.Close()
 
-	// /pools/search returns rows under "results"; expose them via .Pools.
-	if len(response.Pools) == 0 {
-		response.Pools = response.Results
-	}
+	normalizePoolsResponse(&response)
 
 	return &response, nil
 }
 
 // ListByDex returns a list of top pools on a specific network's DEX.
-// Implements the getDexPools operation from the OpenAPI spec.
+//
+// The DexPaprika API removed /networks/{network}/dexes/{dex}/pools (HTTP 410),
+// so this method targets the unified /networks/{network}/pools/search endpoint
+// and passes the DEX through the dex_name query parameter. Despite that name,
+// the filter matches the DEX id, case-insensitively, so dexID must be what
+// Networks.ListDexes returns as Dex.ID ("uniswap_v3"), not Dex.Name
+// ("Uniswap V3"). A display name returns HTTP 200 with an empty result set
+// rather than an error, so a wrong value here fails silently.
+//
+// That endpoint is cursor-paginated and rejects the legacy sort values, so the
+// sort field is normalized and the Page option is not sent upstream. Pass
+// ListOptions.Cursor (taken from a previous response's NextCursor) to page.
 func (s *PoolsService) ListByDex(ctx context.Context, networkID, dexID string, opts *ListOptions) (*PoolsResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
@@ -225,15 +234,34 @@ func (s *PoolsService) ListByDex(ctx context.Context, networkID, dexID string, o
 		return nil, fmt.Errorf("dex ID is required")
 	}
 
-	path, err := addOptions(fmt.Sprintf("/networks/%s/dexes/%s/pools", networkID, dexID), opts)
+	req, err := s.client.NewRequest(http.MethodGet, fmt.Sprintf("/networks/%s/pools/search", networkID), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := s.client.NewRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, err
+	q := req.URL.Query()
+	q.Add("dex_name", dexID)
+	orderBy := ""
+	if opts != nil {
+		orderBy = opts.OrderBy
 	}
+	q.Add("order_by", mapPoolSortField(orderBy))
+	if opts != nil {
+		if opts.Limit > 0 {
+			limit := opts.Limit
+			if limit > 100 {
+				limit = 100
+			}
+			q.Add("limit", fmt.Sprintf("%d", limit))
+		}
+		if opts.Sort != "" {
+			q.Add("sort", opts.Sort)
+		}
+		if opts.Cursor != "" {
+			q.Add("cursor", opts.Cursor)
+		}
+	}
+	req.URL.RawQuery = q.Encode()
 
 	var response PoolsResponse
 	r, err := s.client.Do(ctx, req, &response)
@@ -241,6 +269,8 @@ func (s *PoolsService) ListByDex(ctx context.Context, networkID, dexID string, o
 		return nil, err
 	}
 	defer r.Body.Close()
+
+	normalizePoolsResponse(&response)
 
 	return &response, nil
 }
