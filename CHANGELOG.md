@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.7.0] - 2026-08-14
 
 ### Breaking Changes
 - **API CHANGE**: DexPaprika removed `GET /networks/{network}/dexes/{dex}/pools` (now HTTP 410). `Pools.ListByDex()` now targets `GET /networks/{network}/pools/search` and sends the DEX as the `dex_name` query parameter. The method signature is unchanged.
