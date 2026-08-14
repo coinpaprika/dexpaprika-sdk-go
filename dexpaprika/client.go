@@ -36,7 +36,7 @@ const (
 	// G101 heuristic fires on the identifier containing "APIKey", so it is
 	// suppressed here rather than by renaming the constant into something less
 	// clear at the call site.
-	APIKeyEnvVar = "DEXPAPRIKA_API_KEY" //nosec G101 -- environment variable name, not a secret
+	APIKeyEnvVar = "DEXPAPRIKA_API_KEY" //nolint:gosec // G101: env var name, not a secret
 	// DefaultTimeout is the default timeout for API requests
 	DefaultTimeout = 30 * time.Second
 	// DefaultMaxRetries is the default number of retry attempts
