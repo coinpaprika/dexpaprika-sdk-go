@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.8.0] - 2026-08-14
+
+### Added
+- **Optional API key.** `dexpaprika.WithAPIKey("api_...")`, falling back to the `DEXPAPRIKA_API_KEY` environment variable when the option is not passed. Keyless remains the default and is unchanged: without a key the client sends exactly what it sent before. The key is transmitted as the **entire** `Authorization` value, with no `Bearer` prefix and no other scheme word, because the API checksums the raw header and a scheme word returns 401.
+- `Version` and `APIKeyEnvVar` are now exported constants.
+- The host is never inferred from the presence of a key. Free keys are served from `DefaultBaseURL` and only Pro moves to `api-pro.dexpaprika.com`, selected with `WithBaseURL`. Sending a free key to the Pro host returns 403, so guessing would break exactly the people who just registered.
+
+### Changed
+- **The default User-Agent carries the version.** It was the bare string `DexPaprika-SDK-Go`, which said the SDK was in use but never which version, so no rollout could be measured. It is now `DexPaprika-SDK-Go/<Version>`. `WithUserAgent` and `SetUserAgent` still override it, and the two existing tests that pinned the unversioned literal were updated.
+
+### Notes
+- 12 new tests, asserting on the headers that actually reach an httptest server rather than on struct fields: the bare-key format against five scheme words, keyless behaviour, option-beats-environment precedence, whitespace trimming, rejection of keys carrying header-injection characters, and the host rules in both directions.
+- A key the API cannot read is ignored rather than rejected on the data endpoints: the call returns `200` with real data while quietly serving the keyless tier. `/usage` and its `plan` field are the way to confirm a key is landing.
+
 ## [1.7.0] - 2026-08-14
 
 ### Breaking Changes

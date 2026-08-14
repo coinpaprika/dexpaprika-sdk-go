@@ -28,7 +28,7 @@ func TestNewClient(t *testing.T) {
 		t.Fatal("NewClient() http client is nil")
 	}
 
-	if got, want := client.userAgent, "DexPaprika-SDK-Go"; got != want {
+	if got, want := client.userAgent, "DexPaprika-SDK-Go/"+Version; got != want {
 		t.Errorf("NewClient() userAgent is %v, want %v", got, want)
 	}
 
@@ -155,8 +155,9 @@ func TestClient_NewRequest(t *testing.T) {
 		t.Errorf("NewRequest() URL = %v, want %v", got, want)
 	}
 
-	// Check headers
-	expectedUserAgent := "DexPaprika-SDK-Go"
+	// Check headers. The default carries the version now; it used to be the bare
+	// name, which told us the SDK was in use but never which version.
+	expectedUserAgent := "DexPaprika-SDK-Go/" + Version
 	if got, want := req.Header.Get("User-Agent"), expectedUserAgent; got != want {
 		t.Errorf("NewRequest() User-Agent = %v, want %v", got, want)
 	}
