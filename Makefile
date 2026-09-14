@@ -17,7 +17,7 @@ tidy: ## Run go mod tidy
 check: ## Linting and static analysis
 # binary will be $(go env GOPATH)/bin/golangci-lint
 	@if test ! -e ./bin/golangci-lint; then \
-		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.11.4/install.sh| sh -s v2.11.4; \
+		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.13.2/install.sh| sh -s v2.13.2; \
 	fi
 	@./bin/golangci-lint run -c .golangci.yml
 
