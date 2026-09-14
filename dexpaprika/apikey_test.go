@@ -37,10 +37,10 @@ func headersFor(t *testing.T, options ...ClientOption) http.Header {
 	return got
 }
 
-// ── The Bearer rule ────────────────────────────────────────────────────────
-// Authorization: Bearer api_... returns 401 because the API checksums the raw
-// header value. The mistake has resurfaced three times in four months, so pin it
-// against every scheme word somebody might reach for.
+// ── The Authorization rule ─────────────────────────────────────────────────
+// The key is the entire Authorization value. Nothing goes in front of it and no
+// scheme word is ever prepended. That has been re-derived wrongly three times in
+// four months, so pin it against every scheme word somebody might reach for.
 
 func TestKeyIsTheEntireAuthorizationValue(t *testing.T) {
 	t.Setenv(APIKeyEnvVar, "")
