@@ -153,11 +153,9 @@ func TestPoolsService(t *testing.T) {
 					t.Skip("no pools available for testing")
 				}
 
-				now := time.Now()
-				yesterday := now.Add(-24 * time.Hour)
+				// '-24h' is relative to now: the whole window without a key.
 				ohlcvOpts := &dexpaprika.OHLCVOptions{
-					Start:    yesterday.Format("2006-01-02"),
-					End:      now.Format("2006-01-02"),
+					Start:    "-24h",
 					Interval: "1h",
 					Limit:    24,
 				}
