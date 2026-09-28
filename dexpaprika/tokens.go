@@ -362,9 +362,10 @@ func (s *TokensService) Filter(ctx context.Context, networkID string, opts *Toke
 
 // TokenPrice represents a token price from the multi-prices endpoint.
 type TokenPrice struct {
-	Chain    string   `json:"chain"`
-	ID       string   `json:"id"`
-	PriceUSD *float64 `json:"price_usd,omitempty"`
+	Chain       string   `json:"chain"`
+	ID          string   `json:"id"`
+	PriceUSD    *float64 `json:"price_usd,omitempty"`
+	LastUpdated string   `json:"last_updated,omitempty"` // RFC 3339 time of the price, e.g. "2026-09-28T13:06:30Z"
 }
 
 // GetMultiPrices returns batch prices for multiple tokens on a network.

@@ -44,6 +44,10 @@ jobs:
       # tick on every push while five tests were failing on main, so the badge
       # said more than the pipeline knew.
       - name: Run tests
+        # Optional. With a free key in this secret the live tests run at the keyed
+        # pace; without it (or on a fork) they run keyless and take longer.
+        env:
+          DEXPAPRIKA_API_KEY: ${{ secrets.DEXPAPRIKA_API_KEY }}
         run: make test
 
 

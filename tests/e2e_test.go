@@ -12,7 +12,9 @@ import (
 func setupTest(t *testing.T) (context.Context, *dexpaprika.Client) {
 	t.Helper()
 	client := dexpaprika.NewClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	// One deadline covers every call in the test, and TestMain spaces those
+	// calls a few seconds apart.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	t.Cleanup(cancel)
 	return ctx, client
 }

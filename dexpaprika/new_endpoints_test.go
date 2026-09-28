@@ -165,7 +165,10 @@ func TestTokensGetMultiPrices(t *testing.T) {
 		if p.PriceUSD == nil {
 			t.Fatalf("Price missing price_usd for %s", p.ID)
 		}
-		t.Logf("%s: $%.4f", p.ID[:10], *p.PriceUSD)
+		if p.LastUpdated == "" {
+			t.Errorf("Price missing last_updated for %s", p.ID)
+		}
+		t.Logf("%s: $%.4f at %s", p.ID[:10], *p.PriceUSD, p.LastUpdated)
 	}
 }
 

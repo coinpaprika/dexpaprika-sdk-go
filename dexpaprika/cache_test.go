@@ -63,7 +63,7 @@ func TestCachedClient(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test GetNetworks caching
@@ -133,7 +133,7 @@ func TestCachedClient_GetTokenDetails(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test token details for a well-known token (WETH on Ethereum)
@@ -180,7 +180,7 @@ func TestCachedClient_GetPoolDetails(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Get a pool to test with
@@ -227,7 +227,7 @@ func TestCachedClient_GetDexes(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test for a specific network
@@ -274,7 +274,7 @@ func TestCachedClient_GetPools(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test with specific options
@@ -323,7 +323,7 @@ func TestCachedClient_GetNetworkPools(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test with specific network and options
@@ -380,7 +380,7 @@ func TestCachedClient_GetTokenPools(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test with a specific token
@@ -448,7 +448,7 @@ func TestCachedClient_GetStats(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 500*time.Millisecond)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// First call should hit the API

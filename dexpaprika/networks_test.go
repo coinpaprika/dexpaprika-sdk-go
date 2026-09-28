@@ -13,7 +13,7 @@ func TestNetworks_List(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test getting networks
@@ -44,7 +44,7 @@ func TestNetworks_ListDexes(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// We need networks to test ListDexes
@@ -97,7 +97,7 @@ func TestCachedClient_Networks(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 5*time.Minute)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test networks retrieval from cache
