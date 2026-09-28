@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0] - 2026-09-25
+
+OHLCV availability now depends on your plan. `GetOHLCV` keeps its signature; it stops cutting `Limit` to 366, and the documentation and examples now work without a key.
+
+### API changes this release documents
+- **OHLCV history depth and candle interval are per plan since 2026-09-25.** Without a key: the last 24 hours at `1h`, `6h`, `12h` and `24h`. Free key: 7 days at `10m` and longer (`1m` and `5m` are paid). Dev: 30 days at every interval. Pro and Enterprise: unlimited. A `Start` or `End` outside the window, or a finer interval than the plan allows, is answered with `403`; `GetOHLCV` returns an `*APIError` that matches `errors.Is(err, ErrForbidden)` and whose `Message` names the plan that lifts the limit. See [OHLCV limits by plan](https://docs.dexpaprika.com/knowledge-base/rate-limits#ohlcv-limits-by-plan).
+- **`Start` and `End` accept a relative offset from now:** `-24h`, `-7d`, `-90m`, `-30s`. `Start: "-24h"` selects the last 24 hours, which every plan may query. The fields are strings and the SDK sends them unchanged, so this already worked in 1.8.0.
+- A missing or malformed `Start` or `End` is answered with `400`.
+
+### Changed
+- **`OHLCVOptions.Limit` is capped at 1000, the API maximum.** The SDK used to lower every value above 366 to 366 without saying so, so a request for 500 hourly candles quietly returned 366.
+- `OHLCVOptions` fields and `GetOHLCV` carry doc comments on the accepted formats and the per-plan window.
+- The README example asked for `2023-01-01` to `2023-01-31`, which now returns 403 without a key. It uses `Start: "-24h"` with hourly candles.
+- `examples/production_usage.go`, `tests/e2e_test.go` and the live `TestPools_GetOHLCV` requested yesterday's date, which the API reads as midnight UTC and therefore more than 24 hours back, so all three were answered with 403. They request `-24h`.
+
+### Notes
+- 2 new tests against an httptest server: `Limit` 1000 reaches the wire as 1000 and 5000 is capped at 1000, and `Start`/`End` relative offsets pass through unchanged. Against 1.8.0 the first fails with `limit 1000 sent as "366"`.
+
 ## [1.8.0] - 2026-08-14
 
 ### Added

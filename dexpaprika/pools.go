@@ -354,15 +354,26 @@ type OHLCVRecord struct {
 
 // OHLCVOptions contains options for retrieving OHLCV data.
 type OHLCVOptions struct {
-	Start    string
-	End      string
-	Limit    int
+	// Start is required: a relative offset from now such as "-24h" or "-7d",
+	// RFC 3339, YYYY-MM-DD or Unix seconds. It must fall inside your plan's
+	// history window (24 hours without a key).
+	Start string
+	// End is optional, same formats as Start (e.g. "-1h").
+	End string
+	// Limit is the number of candles, up to 1000.
+	Limit int
+	// Interval: 1m, 5m, 10m, 15m, 30m, 1h, 6h, 12h or 24h. Without a key only 1h
+	// and longer; a free key allows 10m and longer.
 	Interval string
 	Inversed bool
 }
 
 // GetOHLCV returns OHLCV data for a specific pool.
 // Implements the getPoolOHLCV operation from the OpenAPI spec.
+//
+// History depth and candle interval depend on the plan. A request outside it
+// returns an error with status 403 whose message names the plan that lifts the
+// limit. See https://docs.dexpaprika.com/knowledge-base/rate-limits#ohlcv-limits-by-plan
 func (s *PoolsService) GetOHLCV(ctx context.Context, networkID, poolAddress string, opts *OHLCVOptions) ([]OHLCVRecord, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
@@ -387,10 +398,10 @@ func (s *PoolsService) GetOHLCV(ctx context.Context, networkID, poolAddress stri
 			q.Add("end", opts.End)
 		}
 		if opts.Limit > 0 {
-			// Validate OHLCV limit constraints (max 366)
+			// The API returns at most 1000 candles per request.
 			limit := opts.Limit
-			if limit > 366 {
-				limit = 366
+			if limit > 1000 {
+				limit = 1000
 			}
 			q.Add("limit", fmt.Sprintf("%d", limit))
 		}

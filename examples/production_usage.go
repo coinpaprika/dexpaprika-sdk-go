@@ -178,11 +178,9 @@ func main() {
 
 			// Try to get OHLCV data
 			fmt.Println("   Getting OHLCV data...")
-			now := time.Now()
-			yesterday := now.Add(-24 * time.Hour)
+			// '-24h' is relative to now: the whole window without a key.
 			ohlcvOpts := &dexpaprika.OHLCVOptions{
-				Start:    yesterday.Format("2006-01-02"),
-				End:      now.Format("2006-01-02"),
+				Start:    "-24h",
 				Interval: "1h",
 				Limit:    3, // Just a few for demo
 			}

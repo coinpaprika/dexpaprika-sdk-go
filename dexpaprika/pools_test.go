@@ -315,21 +315,12 @@ func TestPools_GetOHLCV(t *testing.T) {
 	networkID := "ethereum"
 	poolID := "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 
-	// Use specific date format for the API
-	// Get yesterday and today in the format YYYY-MM-DD
-	today := time.Now()
-	yesterday := today.AddDate(0, 0, -1)
+	// Keyless OHLCV reaches back 24 hours at 1h and longer. A date start such as
+	// yesterday's YYYY-MM-DD is midnight UTC, usually more than 24 hours ago.
+	t.Log("Getting OHLCV data for the last 24 hours")
 
-	// Format the dates properly
-	startDate := yesterday.Format("2006-01-02")
-	endDate := today.Format("2006-01-02")
-
-	t.Logf("Getting OHLCV data from %s to %s", startDate, endDate)
-
-	// Test getting OHLCV data with specific date format
 	ohlcvOpts := &OHLCVOptions{
-		Start:    startDate,
-		End:      endDate,
+		Start:    "-24h",
 		Interval: "1h",
 		Limit:    3,
 	}
