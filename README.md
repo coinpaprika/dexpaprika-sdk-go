@@ -367,8 +367,11 @@ ohlcv, err := client.Pools.GetOHLCV(ctx, "ethereum", "0xpool_address", &dexpapri
     Limit:    24,
 })
 
-// Get transactions for a pool
-transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xpool_address", 0, 10, "")
+// Get the last hour of transactions for a pool. WithFrom and WithTo take a
+// relative offset ("-1h", "-24h"), RFC 3339, YYYY-MM-DD or Unix seconds; the
+// same shapes work for CreatedAfter / CreatedBefore on Pools.Filter and Tokens.Filter.
+transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xpool_address", 0, 10, "",
+    dexpaprika.WithFrom("-1h"))
 ```
 
 `Start` and `End` take a relative offset from now (`-24h`, `-7d`, `-90m`) as well as RFC 3339, `YYYY-MM-DD` and Unix seconds. How far back you can go and how fine the candles can be depends on your plan: without a key, the last 24 hours at `1h` and longer; a free key opens 7 days at `10m` and longer; Dev 30 days at every interval; Pro unlimited. A request outside your plan returns an `*APIError` with status 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`, and its `Message` names the plan that lifts the limit. Full table: [OHLCV limits by plan](https://docs.dexpaprika.com/knowledge-base/rate-limits#ohlcv-limits-by-plan).

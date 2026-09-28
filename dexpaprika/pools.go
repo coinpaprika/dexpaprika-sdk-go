@@ -463,9 +463,30 @@ func WithToTimestamp(to int64) TransactionOption {
 	}
 }
 
+// WithFrom filters transactions starting from this time (inclusive). It takes
+// every shape the API accepts: a relative offset from now such as "-1h" or
+// "-24h", Unix seconds, RFC 3339 or YYYY-MM-DD. Results are always capped to
+// the last 7 days. It replaces any earlier from, including one set with
+// WithFromTimestamp.
+func WithFrom(from string) TransactionOption {
+	return func(q *url.Values) {
+		q.Set("from", from)
+	}
+}
+
+// WithTo filters transactions up to this time (exclusive), in the same formats
+// as WithFrom. It replaces any earlier to, including one set with
+// WithToTimestamp.
+func WithTo(to string) TransactionOption {
+	return func(q *url.Values) {
+		q.Set("to", to)
+	}
+}
+
 // GetTransactions returns transactions of a pool on a network.
 // Implements the getPoolTransactions operation from the OpenAPI spec.
-// Use WithFromTimestamp and WithToTimestamp to filter by time range.
+// Use WithFrom and WithTo ("-1h", RFC 3339, ...) or WithFromTimestamp and
+// WithToTimestamp (Unix seconds) to filter by time range.
 func (s *PoolsService) GetTransactions(ctx context.Context, networkID, poolAddress string, page, limit int, cursor string, opts ...TransactionOption) (*TransactionsResponse, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
@@ -527,8 +548,8 @@ type PoolFilterOptions struct {
 	LiquidityMin  *float64
 	LiquidityMax  *float64
 	Txns24hMin    *int
-	CreatedAfter  string
-	CreatedBefore string
+	CreatedAfter  string // a relative offset such as "-24h" or "-7d", Unix seconds, RFC 3339 or YYYY-MM-DD
+	CreatedBefore string // same formats as CreatedAfter
 
 	// Price-change bounds, in percent. Negative values are meaningful: set
 	// PriceChange24hMax to -20 to find pools down at least a fifth on the day.
