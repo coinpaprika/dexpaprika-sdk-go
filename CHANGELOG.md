@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.0] - 2026-09-28
+
+Time filters on transactions and search take relative times.
+
+### Added
+- `WithFrom(string)` and `WithTo(string)` for `Pools.GetTransactions`. They take a relative offset from now such as `"-1h"` or `"-24h"`, RFC 3339, `YYYY-MM-DD` or Unix seconds, which the API accepts since 2026-09-28. `WithFromTimestamp(int64)` and `WithToTimestamp(int64)` could not carry `-1h`; they stay and keep working unchanged.
+- `CreatedAfter` and `CreatedBefore` on `PoolFilterOptions` and `TokenFilterOptions` were already strings; their documentation now lists the same shapes, so `CreatedAfter: "-24h"` returns what was created in the last day.
+
 ## [1.9.0] - 2026-09-25
 
 OHLCV availability now depends on your plan. `GetOHLCV` keeps its signature; it stops cutting `Limit` to 366, and the documentation and examples now work without a key.

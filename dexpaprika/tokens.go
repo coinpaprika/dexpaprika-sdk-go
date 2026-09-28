@@ -269,8 +269,8 @@ type TokenFilterOptions struct {
 	FDVMin        *float64
 	FDVMax        *float64
 	Txns24hMin    *int
-	CreatedAfter  string
-	CreatedBefore string
+	CreatedAfter  string // a relative offset such as "-24h" or "-7d", Unix seconds, RFC 3339 or YYYY-MM-DD
+	CreatedBefore string // same formats as CreatedAfter
 
 	// The 24h window is the only price-change bound tokens/search honours, in
 	// percent. Negatives are meaningful: PriceChange24hMax of -20 finds tokens
