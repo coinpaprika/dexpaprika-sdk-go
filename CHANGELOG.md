@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.10.1] - 2026-09-28
+
+`GetTransactions` and `GetMultiPrices` keep every field the API sends, and the test suite stays under the API rate limit.
+
+### Fixed
+- `TokenPrice` has a `LastUpdated` field. The multi prices endpoint returns `last_updated` (RFC 3339, for example `"2026-09-28T13:06:30Z"`) next to every price, and the struct had nowhere to put it, so it was dropped on decode.
+- `Transaction` has the 13 fields the transactions endpoint returns and the struct dropped: `Chain`, `FactoryID`, `Token0Symbol`, `Token1Symbol`, `Volume0`, `Volume1`, `Price0`, `Price1`, `Price0USD`, `Price1USD`, `CreatedAt`, `CreatedAtBlockHash` and `CanonicalChain`. Before this a row had no time other than the block number and no USD value. Numbers and the bool are pointers and the strings use `omitempty`, like the other optional fields. `Amount0` and `Amount1` still decode as `float64`; use `Volume0` and `Volume1` for display.
+
+### Tests and CI
+- Live tests are spaced to the per-IP rate limit. They used to send their requests back to back; the burst ran into 429 and whichever test was running when its retries or its 10 second context ran out failed, a different one each run (seen in CI: `TestTokensGetMultiPrices`, `TestPoolsPaginator_ForDex`). A test-only transport in `internal/livethrottle` now starts requests to `api.dexpaprika.com` at least 4.2 s apart, or 2.1 s apart when `DEXPAPRIKA_API_KEY` is set. Requests to httptest servers are not delayed.
+- Live tests get a 3 minute deadline instead of 5 to 60 seconds, because the spacing counts against it.
+- `make test` runs the packages one at a time (`-p 1`), since two test binaries at full pace would exceed a per-IP limit, and allows 20 minutes.
+- The Test workflow passes an optional `DEXPAPRIKA_API_KEY` secret. Without it, and on pull requests from forks, the suite runs keyless.
+- A full keyless run made 60 live requests (47 in `dexpaprika`, 13 in `tests`) with no 429 and took 4 min 15 s. Unpaced, the suite took 1.5 to 2 minutes, and 2 of the 4 CI runs between 25 and 28 September failed on a 429 or a context deadline.
+
+### Notes
+- A new test runs a live transactions row through `GetTransactions`, encodes it again and compares the keys with what the API sent: 24 of 24 here, 11 against 1.10.0.
+- 1 new test runs the live multi prices body through `GetMultiPrices` and encodes the result again. Against 1.10.0 it fails with `last_updated is <nil> after decoding`. 4 tests cover the throttle: spacing, no delay for other hosts, a cancelled context ends the wait, and the pace follows the key.
+
 ## [1.10.0] - 2026-09-28
 
 Time filters on transactions and search take relative times.

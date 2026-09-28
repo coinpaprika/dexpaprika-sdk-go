@@ -434,9 +434,24 @@ type Transaction struct {
 	Recipient            string      `json:"recipient"`
 	Token0               string      `json:"token_0"`
 	Token1               string      `json:"token_1"`
-	Amount0              interface{} `json:"amount_0"`
-	Amount1              interface{} `json:"amount_1"`
+	Amount0              interface{} `json:"amount_0"` // raw signed integer; decodes as float64, so very large values lose precision. Use Volume0 for display.
+	Amount1              interface{} `json:"amount_1"` // raw signed integer, same caveat as Amount0
 	CreatedAtBlockNumber int64       `json:"created_at_block_number"`
+
+	// Returned by the API and dropped on decode before 1.10.1.
+	Chain              string   `json:"chain,omitempty"`
+	FactoryID          string   `json:"factory_id,omitempty"`
+	Token0Symbol       string   `json:"token_0_symbol,omitempty"`
+	Token1Symbol       string   `json:"token_1_symbol,omitempty"`
+	Volume0            *float64 `json:"volume_0,omitempty"`    // Amount0 in whole token units, unsigned
+	Volume1            *float64 `json:"volume_1,omitempty"`    // Amount1 in whole token units, unsigned
+	Price0             *float64 `json:"price_0,omitempty"`     // token_0 priced in token_1
+	Price1             *float64 `json:"price_1,omitempty"`     // token_1 priced in token_0
+	Price0USD          *float64 `json:"price_0_usd,omitempty"` // token_0 in USD
+	Price1USD          *float64 `json:"price_1_usd,omitempty"` // token_1 in USD
+	CreatedAt          string   `json:"created_at,omitempty"`  // block time, RFC 3339 UTC, e.g. "2026-09-28T13:34:47Z"
+	CreatedAtBlockHash string   `json:"created_at_block_hash,omitempty"`
+	CanonicalChain     *bool    `json:"canonical_chain,omitempty"`
 }
 
 // TransactionsResponse represents the response for the transactions endpoint.

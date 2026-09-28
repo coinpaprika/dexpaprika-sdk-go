@@ -15,8 +15,7 @@ func TestSearch_Search(t *testing.T) {
 		WithRetryConfig(3, 1*time.Second, 8*time.Second),
 	)
 
-	// Create a context with longer timeout (30 seconds instead of 10)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test searching for a common term
@@ -35,22 +34,21 @@ func TestSearch_Search(t *testing.T) {
 		t.Error("Search.Search returned empty results for query 'ethereum'")
 	}
 
-	// Test specific query handling with individual timeouts
+	// Test specific query handling, each with its own deadline
 	queries := []struct {
-		query   string
-		timeout time.Duration
-		desc    string
+		query string
+		desc  string
 	}{
-		{"uniswap", 10 * time.Second, "should find DEXes"},
-		{"bitcoin", 10 * time.Second, "should find tokens"},
-		{"eth", 15 * time.Second, "should find tokens"},              // Allow more time for this common term
-		{"0xc02aaa39b2", 15 * time.Second, "partial address search"}, // Allow more time for address search
+		{"uniswap", "should find DEXes"},
+		{"bitcoin", "should find tokens"},
+		{"eth", "should find tokens"},
+		{"0xc02aaa39b2", "partial address search"},
 	}
 
 	for _, q := range queries {
 		t.Run("Query:"+q.query, func(t *testing.T) {
 			// Create a separate context with appropriate timeout for each query
-			queryCtx, queryCancel := context.WithTimeout(context.Background(), q.timeout)
+			queryCtx, queryCancel := context.WithTimeout(context.Background(), liveTimeout)
 			defer queryCancel()
 
 			results, err := client.Search.Search(queryCtx, q.query)

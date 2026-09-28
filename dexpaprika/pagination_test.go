@@ -15,7 +15,7 @@ func TestPoolsPaginator(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Create a paginator with small limit for testing
@@ -57,7 +57,7 @@ func TestPoolsPaginator_ForNetwork(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Create a paginator for a specific network
@@ -95,7 +95,7 @@ func TestDexesPaginator(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Create a paginator for a specific network with small limit
@@ -137,7 +137,7 @@ func TestTransactionsPaginator(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// First, get a valid pool ID from ethereum
@@ -188,7 +188,7 @@ func TestPoolsPaginator_ForDex(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// First, get a valid dex ID from ethereum
@@ -237,7 +237,7 @@ func TestPoolsPaginator_ForToken(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Use well-known token (WETH on Ethereum)
@@ -318,7 +318,7 @@ func TestTransactionsPaginator_GetErrorWithBadNetwork(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Create a paginator with an invalid network

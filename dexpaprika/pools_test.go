@@ -19,7 +19,7 @@ func TestPools_List(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test getting top pools - this should now return a 410 Gone error
@@ -57,7 +57,7 @@ func TestPools_ListByNetwork(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test getting network-specific pools (using Ethereum as example)
@@ -92,7 +92,7 @@ func TestPools_ListByDex(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test getting DEX-specific pools (using Uniswap V3 on Ethereum as example)
@@ -256,7 +256,7 @@ func TestPools_GetDetails(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Use a well-known Ethereum USDC-WETH Uniswap V3 pool
@@ -308,7 +308,7 @@ func TestPools_GetOHLCV(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Use a well-known Ethereum USDC-WETH Uniswap V3 pool

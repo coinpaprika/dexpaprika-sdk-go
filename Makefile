@@ -8,8 +8,9 @@ build: ## Build all artifacts
 
 run-example: ## Run real world example
 	@go run examples/production_usage.go
-test:
-	@go test -shuffle=on -race ./...
+test: ## Run the tests; the live ones are spaced to the per-IP rate limit
+# -p 1: the limit is per IP, so two test binaries at full pace would exceed it.
+	@go test -shuffle=on -race -p 1 -timeout 20m ./...
 
 tidy: ## Run go mod tidy
 	@go mod tidy

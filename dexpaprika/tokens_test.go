@@ -17,7 +17,7 @@ func TestTokens_GetDetails(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test token details for a well-known token (WETH on Ethereum)
@@ -60,7 +60,7 @@ func TestTokens_GetPools(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test token pools for a well-known token (WETH on Ethereum)
@@ -113,7 +113,7 @@ func TestTokens_GetPoolsCursorPagination(t *testing.T) {
 	)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	tokenChain := "ethereum"
@@ -175,7 +175,7 @@ func TestCachedClient_Tokens(t *testing.T) {
 	cachedClient := NewCachedClient(client, nil, 5*time.Minute)
 
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), liveTimeout)
 	defer cancel()
 
 	// Test token details caching
