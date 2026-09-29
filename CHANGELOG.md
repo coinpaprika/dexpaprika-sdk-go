@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.11.0] - 2026-09-29
+
+Token OHLCV: USD candles for a token across every pool it trades in, not just one pool.
+
+### Added
+- `Tokens.GetOHLCV(ctx, networkID, tokenAddress, opts)` calls `GET /networks/{network}/tokens/{token_address}/ohlcv`. Each candle is a volume-weighted USD price across every pool the token trades in on that network, and `Volume` is the USD traded across all of them combined. It decodes into the same `OHLCVRecord` that `Pools.GetOHLCV` already returns.
+- `TokenOHLCVOptions` carries `Start` (required), `End`, `Interval` and `Limit`, the same shapes as `OHLCVOptions` on pool OHLCV. It has no `Inversed` field: this endpoint has no such parameter, so it gets its own options type rather than reusing `OHLCVOptions` and risking that field being sent by mistake.
+- This endpoint requires a Dev, Pro or Enterprise plan. A keyless or free-key call gets a `403` whose body names the required plan; `GetOHLCV` returns that message unchanged in `*APIError.Message`, matched with `errors.Is(err, ErrForbidden)`. On the Dev plan, history is limited to the last 30 days.
+- Reaching it needs the same client setup Pro users already use for pool OHLCV: `WithAPIKey` plus `WithBaseURL("https://api-pro.dexpaprika.com")`. The SDK does not switch host on its own.
+
 ## [1.10.1] - 2026-09-28
 
 `GetTransactions` and `GetMultiPrices` keep every field the API sends, and the test suite stays under the API rate limit.
