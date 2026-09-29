@@ -28,7 +28,7 @@ const (
 
 	// Version of this SDK, reported in the User-Agent. Keep in step with the git
 	// tag; the module proxy serves tags, not this constant.
-	Version = "1.11.0"
+	Version = "1.11.1"
 
 	// APIKeyEnvVar is consulted when no key is passed to NewClient.
 	//
@@ -109,9 +109,8 @@ func WithBaseURL(baseURL string) ClientOption {
 // Optional. Without one the client is keyless, which works and needs no signup.
 // An explicit key here beats the DEXPAPRIKA_API_KEY environment variable.
 //
-// The key is sent as the entire Authorization value. There is no "Bearer" prefix
-// and no other scheme word: the API checksums the raw header, so a scheme word
-// returns 401. This is the most common reason a working key looks broken.
+// Send the key on its own, as the entire Authorization value, with nothing
+// in front of it.
 func WithAPIKey(apiKey string) ClientOption {
 	return func(c *Client) {
 		c.apiKey = sanitizeAPIKey(apiKey)
