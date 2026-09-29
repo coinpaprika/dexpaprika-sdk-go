@@ -376,6 +376,29 @@ transactions, err := client.Pools.GetTransactions(ctx, "ethereum", "0xpool_addre
 
 `Start` and `End` take a relative offset from now (`-24h`, `-7d`, `-90m`) as well as RFC 3339, `YYYY-MM-DD` and Unix seconds. How far back you can go and how fine the candles can be depends on your plan: without a key, the last 24 hours at `1h` and longer; a free key opens 7 days at `10m` and longer; Dev 30 days at every interval; Pro unlimited. A request outside your plan returns an `*APIError` with status 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`, and its `Message` names the plan that lifts the limit. Full table: [OHLCV limits by plan](https://docs.dexpaprika.com/knowledge-base/rate-limits#ohlcv-limits-by-plan).
 
+#### Token OHLCV
+
+`Tokens.GetOHLCV` returns USD candles for a token, built from a volume-weighted price across every pool the token trades in on that network; `Volume` is the USD traded across all of them combined. It decodes into the same `OHLCVRecord` as pool OHLCV, but takes `TokenOHLCVOptions`, which has no `Inversed` field: this endpoint has no such parameter.
+
+```go
+tokenOHLCV, err := client.Tokens.GetOHLCV(ctx, "ethereum", "0xtoken_address", &dexpaprika.TokenOHLCVOptions{
+    Start:    "-24h",
+    Interval: "1h",
+    Limit:    24,
+})
+```
+
+This endpoint needs a Dev, Pro or Enterprise plan, called against the Pro host. Configure both, the same as any other Pro call:
+
+```go
+client := dexpaprika.NewClient(
+    dexpaprika.WithAPIKey("api_your_pro_key"),
+    dexpaprika.WithBaseURL("https://api-pro.dexpaprika.com"),
+)
+```
+
+A keyless or free-key call, or a paid key left on the default host, gets a 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`; its `Message` is the API's own text naming the plan that unlocks the endpoint. On the Dev plan, history is limited to the last 30 days. See [token OHLCV](https://docs.dexpaprika.com/api-reference/tokens/get-ohlcv-data-for-a-token) and current plan availability on the [pricing page](https://dexpaprika.com/api/pricing).
+
 Note on DEX pools: the API removed `/networks/{network}/dexes/{dex}/pools` and it
 now answers HTTP 410. `Pools.ListByDex` keeps the same signature but sends the DEX
 as the `dex_name` filter on `/networks/{network}/pools/search`. Two consequences

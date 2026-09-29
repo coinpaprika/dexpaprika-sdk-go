@@ -74,6 +74,96 @@ func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress 
 	return &response, nil
 }
 
+// TokenOHLCVOptions contains options for retrieving token OHLCV data.
+//
+// There is no Inversed field. Pool OHLCV can flip a pair's perspective;
+// token OHLCV is already a USD candle built across every pool the token
+// trades in, so there is nothing to invert. Do not send "inversed" here.
+type TokenOHLCVOptions struct {
+	// Start is required: a relative offset from now such as "-24h" or "-7d",
+	// RFC 3339, YYYY-MM-DD or Unix seconds. It must fall inside your plan's
+	// history window.
+	Start string
+	// End is optional, same formats as Start (e.g. "-1h").
+	End string
+	// Limit is the number of candles, up to 1000. The server defaults to 10
+	// when omitted.
+	Limit int
+	// Interval: 1m, 5m, 10m, 15m, 30m, 1h, 6h, 12h or 24h. The server defaults
+	// to 24h when omitted.
+	Interval string
+}
+
+// GetOHLCV returns USD OHLCV candles for a token on a network.
+//
+// Implements the getTokenOHLCV operation from the OpenAPI spec.
+//
+// Each candle is built from a volume-weighted price across every pool the
+// token trades in on that network; Volume is the USD traded across all of
+// them combined. The record shape is the same OHLCVRecord that Pools.GetOHLCV
+// returns, but there is no Inversed option on this endpoint: use
+// TokenOHLCVOptions, not OHLCVOptions.
+//
+// This endpoint requires a Dev, Pro or Enterprise plan. A keyless or
+// free-key call returns an *APIError with status 403 that matches
+// errors.Is(err, ErrForbidden); its Message is the API's own text naming the
+// required plan. On the Dev plan, history is limited to the last 30 days.
+//
+// The SDK does not choose a host for you. Reach this endpoint by configuring
+// the client with both WithAPIKey and
+// WithBaseURL("https://api-pro.dexpaprika.com"); the default host
+// (api.dexpaprika.com) serves keyless and free-key traffic and answers this
+// call with the same 403 regardless of which key is attached to the request.
+//
+// See https://docs.dexpaprika.com/api-reference/tokens/get-ohlcv-data-for-a-token
+// and https://dexpaprika.com/api/pricing for current plan availability.
+func (s *TokensService) GetOHLCV(ctx context.Context, networkID, tokenAddress string, opts *TokenOHLCVOptions) ([]OHLCVRecord, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+	if tokenAddress == "" {
+		return nil, fmt.Errorf("token address is required")
+	}
+
+	path := fmt.Sprintf("/networks/%s/tokens/%s/ohlcv", networkID, tokenAddress)
+
+	req, err := s.client.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := req.URL.Query()
+	if opts != nil {
+		if opts.Start != "" {
+			q.Add("start", opts.Start)
+		}
+		if opts.End != "" {
+			q.Add("end", opts.End)
+		}
+		if opts.Limit > 0 {
+			// The API returns at most 1000 candles per request.
+			limit := opts.Limit
+			if limit > 1000 {
+				limit = 1000
+			}
+			q.Add("limit", fmt.Sprintf("%d", limit))
+		}
+		if opts.Interval != "" {
+			q.Add("interval", opts.Interval)
+		}
+	}
+	req.URL.RawQuery = q.Encode()
+
+	var response []OHLCVRecord
+	r, err := s.client.Do(ctx, req, &response)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	return response, nil
+}
+
 // TokenPoolsOptions contains options for retrieving token pools.
 //
 // Page is accepted for backward compatibility but is not sent to the

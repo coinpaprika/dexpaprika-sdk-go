@@ -28,7 +28,7 @@ const (
 
 	// Version of this SDK, reported in the User-Agent. Keep in step with the git
 	// tag; the module proxy serves tags, not this constant.
-	Version = "1.10.1"
+	Version = "1.11.0"
 
 	// APIKeyEnvVar is consulted when no key is passed to NewClient.
 	//
