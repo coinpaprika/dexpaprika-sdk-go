@@ -111,9 +111,8 @@ type TokenOHLCVOptions struct {
 //
 // The SDK does not choose a host for you. Reach this endpoint by configuring
 // the client with both WithAPIKey and
-// WithBaseURL("https://api-pro.dexpaprika.com"); the default host
-// (api.dexpaprika.com) serves keyless and free-key traffic and answers this
-// call with the same 403 regardless of which key is attached to the request.
+// WithBaseURL("https://api-pro.dexpaprika.com"). The default host,
+// api.dexpaprika.com, is for keyless and free-key traffic.
 //
 // See https://docs.dexpaprika.com/api-reference/tokens/get-ohlcv-data-for-a-token
 // and https://dexpaprika.com/api/pricing for current plan availability.

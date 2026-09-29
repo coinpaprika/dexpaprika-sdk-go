@@ -392,12 +392,12 @@ This endpoint needs a Dev, Pro or Enterprise plan, called against the Pro host. 
 
 ```go
 client := dexpaprika.NewClient(
-    dexpaprika.WithAPIKey("api_your_pro_key"),
+    dexpaprika.WithAPIKey("api_your_dev_or_pro_key"),
     dexpaprika.WithBaseURL("https://api-pro.dexpaprika.com"),
 )
 ```
 
-A keyless or free-key call, or a paid key left on the default host, gets a 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`; its `Message` is the API's own text naming the plan that unlocks the endpoint. On the Dev plan, history is limited to the last 30 days. See [token OHLCV](https://docs.dexpaprika.com/api-reference/tokens/get-ohlcv-data-for-a-token) and current plan availability on the [pricing page](https://dexpaprika.com/api/pricing).
+A keyless or free-key call gets a 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`; its `Message` is the API's own text naming the plan that unlocks the endpoint. On the Dev plan, history is limited to the last 30 days. See [token OHLCV](https://docs.dexpaprika.com/api-reference/tokens/get-ohlcv-data-for-a-token) and current plan availability on the [pricing page](https://dexpaprika.com/api/pricing).
 
 Note on DEX pools: the API removed `/networks/{network}/dexes/{dex}/pools` and it
 now answers HTTP 410. `Pools.ListByDex` keeps the same signature but sends the DEX
