@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.11.1] - 2026-09-29
+
+### Changed
+- The README and the `WithAPIKey` godoc now just say to send the key on its own as the whole `Authorization` value, with nothing in front of it.
+
 ## [1.11.0] - 2026-09-29
 
 Token OHLCV: USD candles for a token across every pool it trades in, not just one pool.
