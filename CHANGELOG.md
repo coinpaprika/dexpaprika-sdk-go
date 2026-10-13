@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+Technical indicators for pools and tokens.
+
+### Added
+- `Pools.GetIndicator(ctx, networkID, poolAddress, opts)` calls `GET /networks/{network}/pools/{pool_address}/indicators`, and `Tokens.GetIndicator(ctx, networkID, tokenAddress, opts)` calls the token equivalent. Both take `IndicatorOptions` and return `*IndicatorResponse`.
+- `IndicatorOptions.Indicator` is required and selects `rsi`, `ema`, `macd`, `bbands` or `vwap` (constants `IndicatorRSI`, `IndicatorEMA`, `IndicatorMACD`, `IndicatorBBands`, `IndicatorVWAP`); a missing value fails client-side the same way the API fails it, with 400 `missing_param`. `Interval`, `Limit`, `Start`, `End`, `Cursor`, `Period`, `FastPeriod`, `SlowPeriod`, `SignalPeriod` and `StdDev` are sent only when set, because the API refuses a parameter that belongs to a different indicator.
+- `IndicatorResponse.Data` is `[]IndicatorDataPoint`, each carrying `Timestamp` plus whichever fields the indicator reports: `Value` for rsi, ema and vwap; `MACD`, `Signal` and `Histogram` for macd; `Upper`, `Middle` and `Lower` for bbands. `PoolAddress` is set on a pool response and `TokenAddress` on a token response, and `Parameters` holds the parameters the server actually used, including defaults left unset.
+- Pool indicators are available on every plan, with the same interval and history limits as pool OHLCV. Token indicators need a Dev, Pro or Enterprise plan; a keyless or free-key call gets a 403 that matches `errors.Is(err, ErrForbidden)`.
+- `APIError` has three new fields parsed from the error body when present: `Param` (the parameter a 400 names), `Resource` (the kind of resource a 404 names) and `RequiredTier` (the plan a 403 `plan_required` names). All three were already on the wire; the SDK just did not expose them before.
+
 ## [1.11.1] - 2026-09-29
 
 ### Changed

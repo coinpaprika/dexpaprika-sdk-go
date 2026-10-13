@@ -399,6 +399,50 @@ client := dexpaprika.NewClient(
 
 A keyless or free-key call gets a 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`; its `Message` is the API's own text naming the plan that unlocks the endpoint. On the Dev plan, history is limited to the last 30 days. See [token OHLCV](https://docs.dexpaprika.com/api-reference/tokens/get-ohlcv-data-for-a-token) and current plan availability on the [pricing page](https://dexpaprika.com/api/pricing).
 
+#### Technical indicators
+
+`Pools.GetIndicator` and `Tokens.GetIndicator` compute rsi, ema, macd, bbands or vwap over a pool's or a token's candles. Both take `IndicatorOptions`, where `Indicator` is required and every other field is sent only when you set it: the API refuses a parameter that belongs to a different indicator, for example `FastPeriod` with `Indicator: "rsi"` returns a 400 whose `Param` is `"fast_period"`.
+
+```go
+// RSI on a pool, works without a key.
+rsi, err := client.Pools.GetIndicator(ctx, "ethereum", "0xpool_address", &dexpaprika.IndicatorOptions{
+    Indicator: dexpaprika.IndicatorRSI,
+    Interval:  "1h",
+    Start:     "-6h",
+})
+for _, point := range rsi.Data {
+    fmt.Println(point.Timestamp, *point.Value)
+}
+
+// macd on the same pool.
+macd, err := client.Pools.GetIndicator(ctx, "ethereum", "0xpool_address", &dexpaprika.IndicatorOptions{
+    Indicator:    dexpaprika.IndicatorMACD,
+    Interval:     "1h",
+    FastPeriod:   12,
+    SlowPeriod:   26,
+    SignalPeriod: 9,
+})
+for _, point := range macd.Data {
+    fmt.Println(point.Timestamp, *point.MACD, *point.Signal, *point.Histogram)
+}
+```
+
+Each `IndicatorDataPoint` carries `Timestamp` plus whichever fields the indicator reports: `Value` for rsi, ema and vwap; `MACD`, `Signal` and `Histogram` for macd; `Upper`, `Middle` and `Lower` for bbands. `IndicatorResponse.Parameters` holds the parameters the server actually used, including any default you left unset. `IndicatorResponse.PoolAddress` is set on a pool response and `TokenAddress` on a token response; the other is always empty. Page with `Cursor` and `HasNextPage`/`NextCursor`, the same shape as pool search.
+
+Pool indicators are available on every plan, with the same interval and history limits as pool OHLCV. Token indicators need a Dev, Pro or Enterprise plan; a keyless or free-key call gets a 403 that matches `errors.Is(err, dexpaprika.ErrForbidden)`, and `APIError.RequiredTier` names the plan that lifts it:
+
+```go
+_, err := client.Tokens.GetIndicator(ctx, "ethereum", "0xtoken_address", &dexpaprika.IndicatorOptions{
+    Indicator: dexpaprika.IndicatorRSI,
+})
+var apiErr *dexpaprika.APIError
+if errors.As(err, &apiErr) {
+    fmt.Println(apiErr.Message, apiErr.RequiredTier)
+}
+```
+
+See the [technical indicators tutorial](https://docs.dexpaprika.com/tutorials/technical-indicators), the [pool](https://docs.dexpaprika.com/api-reference/pools/get-a-technical-indicator-for-a-pool) and [token](https://docs.dexpaprika.com/api-reference/tokens/get-a-technical-indicator-for-a-token) references, and current plan availability on the [pricing page](https://dexpaprika.com/api/pricing). Get a free key at [console.dexpaprika.com](https://console.dexpaprika.com).
+
 Note on DEX pools: the API removed `/networks/{network}/dexes/{dex}/pools` and it
 now answers HTTP 410. `Pools.ListByDex` keeps the same signature but sends the DEX
 as the `dex_name` filter on `/networks/{network}/pools/search`. Two consequences
