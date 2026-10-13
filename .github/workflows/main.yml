@@ -13,14 +13,18 @@ jobs:
     name: Quality & security checks
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      # Lint on the Go version go.mod names, not 'stable'. The pinned
+      # golangci-lint is built with an older Go and cannot read the standard
+      # library of a newer one: on Go 1.27.2 every package failed typecheck
+      # with "export data version 5 is greater than maximum supported
+      # version 4". Tests and build below stay on 'stable'.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: 'stable'
-          check-latest: true
-
-      - name: Check out code
-        uses: actions/checkout@v7
+          go-version-file: go.mod
 
       - name: Lint Go Code
         run: make check
