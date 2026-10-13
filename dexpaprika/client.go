@@ -265,8 +265,20 @@ type APIError struct {
 	// discoverable by callers via err.Replacement. Empty when the API did not
 	// advertise a replacement.
 	Replacement string
-	RawResponse []byte
-	Err         error
+	// Param is the query parameter the error names, parsed from the body's
+	// "param" field when present. Set on a 400 missing_param or invalid_param
+	// (for example "indicator", or a parameter the caller sent that does not
+	// belong to the indicator they asked for).
+	Param string
+	// Resource is the kind of resource the error names, parsed from the
+	// body's "resource" field when present. Set on a 404 not_found (for
+	// example "pool" or "token").
+	Resource string
+	// RequiredTier is the plan that lifts the error, parsed from the body's
+	// "required_tier" field when present. Set on a 403 plan_required.
+	RequiredTier string
+	RawResponse  []byte
+	Err          error
 }
 
 func (e *APIError) Error() string {
@@ -473,9 +485,12 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 	// the body may not be JSON, or may omit any of these fields. In that case
 	// the fields stay empty and we fall back to the status-based defaults below.
 	var errorResp struct {
-		Error       string `json:"error"`
-		Message     string `json:"message"`
-		Replacement string `json:"replacement"`
+		Error        string `json:"error"`
+		Message      string `json:"message"`
+		Replacement  string `json:"replacement"`
+		Param        string `json:"param"`
+		Resource     string `json:"resource"`
+		RequiredTier string `json:"required_tier"`
 	}
 	if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil {
 		switch {
@@ -536,10 +551,13 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 	}
 
 	return &APIError{
-		StatusCode:  resp.StatusCode,
-		Message:     errMsg,
-		Replacement: replacement,
-		RawResponse: body,
-		Err:         err,
+		StatusCode:   resp.StatusCode,
+		Message:      errMsg,
+		Replacement:  replacement,
+		Param:        errorResp.Param,
+		Resource:     errorResp.Resource,
+		RequiredTier: errorResp.RequiredTier,
+		RawResponse:  body,
+		Err:          err,
 	}
 }
