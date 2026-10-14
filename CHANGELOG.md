@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.12.0] - 2026-10-14
 
 Technical indicators for pools and tokens.
 
