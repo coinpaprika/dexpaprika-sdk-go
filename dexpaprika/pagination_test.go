@@ -410,7 +410,7 @@ func TestPoolsPaginator_CursorRequiresKeyWhenKeyless(t *testing.T) {
 
 	// GetNextPage must hand back the exact error the client produced, not a
 	// rewrapped or generic one.
-	if paginator.GetError() != err {
+	if !errors.Is(paginator.GetError(), err) {
 		t.Errorf("GetError() = %v, want the exact error GetNextPage returned", paginator.GetError())
 	}
 
