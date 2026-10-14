@@ -318,6 +318,23 @@ func IsRetryable(err error) bool {
 	return false
 }
 
+// IsKeyRequiredForPaging reports whether err is the 403 a search endpoint
+// returns when a keyless caller sends a cursor: any API key, a free one
+// included, pages without limit, so this is never a reason to stop, only to
+// add a key. It matches the plan_required error that names "cursor" as the
+// param, which is the only case the search endpoints (/pools/search,
+// /tokens/search and their network-scoped forms) use it for today.
+func IsKeyRequiredForPaging(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+
+	return apiErr.StatusCode == http.StatusForbidden &&
+		apiErr.RequiredTier == "free" &&
+		apiErr.Param == "cursor"
+}
+
 // Do sends an API request and returns the API response
 func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
 	var resp *http.Response

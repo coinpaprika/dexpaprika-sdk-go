@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -134,6 +135,14 @@ func TestTokens_GetPoolsCursorPagination(t *testing.T) {
 	}
 	if !firstPage.HasNextPage || firstPage.NextCursor == nil || *firstPage.NextCursor == "" {
 		t.Fatal("Tokens.GetPools first page has no next cursor, expected more WETH pools")
+	}
+
+	// Following the cursor past the first page now needs an API key (a free
+	// key pages without limit); a keyless caller gets a 403 plan_required.
+	// CI on forks has no DEXPAPRIKA_API_KEY, so there is nothing to follow
+	// the cursor with. Skip rather than fail or burn a request into a 403.
+	if os.Getenv(APIKeyEnvVar) == "" {
+		t.Skip("DEXPAPRIKA_API_KEY not set: paging past the first page needs an API key (a free key is enough)")
 	}
 
 	// Follow the cursor and make sure we get a different page.

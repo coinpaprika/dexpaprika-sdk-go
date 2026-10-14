@@ -255,7 +255,18 @@ networks, err = cachedClient.GetNetworks(ctx)
 
 For endpoints that return large collections, the SDK provides pagination helpers:
 
+**The first page of a search result works with no key. Paging past it does
+not.** `/pools/search` and `/tokens/search` (network-scoped or not) return a
+403 on the second page, Param `"cursor"`, for a keyless caller. A free key
+pages without limit. Check for the 403 with
+`dexpaprika.IsKeyRequiredForPaging(err)` rather than looping into it. Get a
+free key at [console.dexpaprika.com](https://console.dexpaprika.com).
+
 ```go
+// A key is required past the first page, so create the client with one.
+// A free key pages without limit: https://console.dexpaprika.com
+client := dexpaprika.NewClient(dexpaprika.WithAPIKey("api_your_key_here"))
+
 // Create a pools paginator
 paginator := dexpaprika.NewPoolsPaginator(client, &dexpaprika.ListOptions{
     Limit: 100,
@@ -350,7 +361,8 @@ networkPools, err := client.Pools.ListByNetwork(ctx, "ethereum", &dexpaprika.Lis
 // Get pools on a specific DEX.
 // /networks/{network}/dexes/{dex}/pools was removed (HTTP 410), so this now
 // targets /pools/search with a dex_name filter. It is cursor-paginated: pass
-// Cursor (from a response's NextCursor) to fetch the next page.
+// Cursor (from a response's NextCursor) to fetch the next page. The first
+// page works with no key; paging past it needs one (a free key is enough).
 dexPools, err := client.Pools.ListByDex(ctx, "ethereum", "uniswap_v3", &dexpaprika.ListOptions{
     Limit:   10,
     OrderBy: "volume_usd_24h",
@@ -470,7 +482,8 @@ tokenDetails, err := client.Tokens.GetDetails(ctx, "ethereum", "0xtoken_address"
 // Get pools that contain a specific token.
 // This targets /networks/{network}/pools/search with token_address, so the
 // filter is network-scoped and results are cursor-paginated: pass
-// Cursor (from a response's NextCursor) to fetch the next page.
+// Cursor (from a response's NextCursor) to fetch the next page. The first
+// page works with no key; paging past it needs one (a free key is enough).
 tokenPools, err := client.Tokens.GetPools(ctx, "ethereum", "0xtoken_address", &dexpaprika.TokenPoolsOptions{
     ListOptions: &dexpaprika.ListOptions{
         Limit:   10,
@@ -489,7 +502,8 @@ client-side by their `Tokens` field.
 ### Pool Filtering
 
 `Pools.Filter` targets the unified `/pools/search` endpoint. It is cursor-paginated
-(`Cursor` / `NextCursor`), and legacy sort values are normalized automatically.
+(`Cursor` / `NextCursor`), and legacy sort values are normalized automatically. The
+first page works with no key; paging past it needs one (a free key is enough).
 
 ```go
 // Find high-volume pools on Ethereum
@@ -508,7 +522,8 @@ fmt.Printf("Found %d pools matching criteria (more pages: %v)\n", len(filtered.R
 `Tokens.GetTop` and `Tokens.Filter` target the unified `/tokens/search` endpoint and
 return the flat row shape (`FilteredToken`): address, chain, price, volume, liquidity,
 FDV, transactions, and 24h price change. The API no longer returns token name/symbol
-here. Both are cursor-paginated.
+here. Both are cursor-paginated: the first page works with no key, paging past it
+needs one (a free key is enough).
 
 ```go
 // Get top tokens by volume

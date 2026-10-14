@@ -11,7 +11,15 @@ type Paginator interface {
 	GetNextPage(ctx context.Context) error
 }
 
-// PoolsPaginator provides pagination for pools
+// PoolsPaginator provides pagination for pools.
+//
+// It reads from the cursor-paginated /pools/search endpoint (network, DEX and
+// token scoped alike). The first page works with no API key. Paging past it
+// does not: a keyless caller sending a cursor gets a 403 whose Param is
+// "cursor", which GetNextPage returns unchanged as an *APIError, so check it
+// with IsKeyRequiredForPaging rather than looping forever. Any API key, a
+// free one included, removes the limit; set one with WithAPIKey before
+// calling GetNextPage again.
 type PoolsPaginator struct {
 	client      *Client
 	networkID   string // Optional, for network-specific queries
@@ -83,7 +91,14 @@ func (p *PoolsPaginator) HasNextPage() bool {
 	return p.currentResp.HasNextPage
 }
 
-// GetNextPage fetches the next page of results
+// GetNextPage fetches the next page of results.
+//
+// Past the first page this sends a cursor, which a keyless caller is not
+// allowed to do: the API answers 403 and GetNextPage returns that *APIError
+// exactly as the client gave it, Param "cursor" and RequiredTier "free"
+// included. Use IsKeyRequiredForPaging to detect it rather than retrying; it
+// does not resolve on its own. This paginator never refuses to run keyless on
+// its own, the first page always goes through.
 func (p *PoolsPaginator) GetNextPage(ctx context.Context) error {
 	if !p.HasNextPage() {
 		return fmt.Errorf("no more pages")

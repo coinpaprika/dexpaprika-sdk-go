@@ -656,6 +656,54 @@ func TestIsRetryable(t *testing.T) {
 	}
 }
 
+// TestIsKeyRequiredForPaging checks the detector against the keyless cursor
+// 403 and against errors that must NOT match it: a differently shaped 403,
+// one for a different param, and one for a tier other than "free".
+func TestIsKeyRequiredForPaging(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil error", nil, false},
+		{"non-APIError", errors.New("regular error"), false},
+		{
+			"plan_required, free, cursor",
+			&APIError{StatusCode: 403, Err: ErrForbidden, RequiredTier: "free", Param: "cursor"},
+			true,
+		},
+		{
+			"wrong status code",
+			&APIError{StatusCode: 401, Err: ErrUnauthorized, RequiredTier: "free", Param: "cursor"},
+			false,
+		},
+		{
+			"different param",
+			&APIError{StatusCode: 403, Err: ErrForbidden, RequiredTier: "free", Param: "indicator"},
+			false,
+		},
+		{
+			"different required tier",
+			&APIError{StatusCode: 403, Err: ErrForbidden, RequiredTier: "dev", Param: "cursor"},
+			false,
+		},
+		{
+			"forbidden with no plan_required fields",
+			&APIError{StatusCode: 403, Err: ErrForbidden},
+			false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := IsKeyRequiredForPaging(tc.err)
+			if got != tc.want {
+				t.Errorf("IsKeyRequiredForPaging(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestClient_HonoursRetryAfter covers both shapes DexPaprika uses to say "come
 // back later". A keyed request gets a Retry-After header; a keyless one gets a
 // 429 with the delay only in the JSON body. Before this, neither was read, so
