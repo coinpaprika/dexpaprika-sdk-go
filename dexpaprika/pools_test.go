@@ -139,7 +139,7 @@ func TestPools_ListByDexTargetsPoolsSearch(t *testing.T) {
 		// Field names copied from a live /pools/search response captured on
 		// 2026-08-05: rows under "results", 24h volume as "volume_usd_24h",
 		// cursor pagination, and no page_info.
-		fmt.Fprint(w, `{"results":[{"id":"0x4f493b7de8aac7d55f71853688b1f7c8f0243c85","dex_id":"curve","dex_name":"Curve","chain":"ethereum","volume_usd_24h":15883391.558251368,"transactions_24h":289,"price_usd":0.9995787501356217,"price_change_percentage_6h":0.009802157529374174,"volume_usd_7d":31781851.73428885,"liquidity_usd":7407910.088430515}],"has_next_page":true,"next_cursor":"eyJjaGFpbiI6ImV0aGVyZXVtIn0","query":{"network":"ethereum","dex_name":"curve"}}`)
+		fmt.Fprint(w, `{"results":[{"id":"0x4f493b7de8aac7d55f71853688b1f7c8f0243c85","dex_id":"curve","dex_name":"Curve","chain":"ethereum","volume_usd_24h":15883391.558251368,"transactions_24h":289,"price_usd":0.9995787501356217,"price_change_percentage_6h":0.009802157529374174,"price_change_percentage_48h":0.0345612378991234,"volume_usd_7d":31781851.73428885,"liquidity_usd":7407910.088430515}],"has_next_page":true,"next_cursor":"eyJjaGFpbiI6ImV0aGVyZXVtIn0","query":{"network":"ethereum","dex_name":"curve"}}`)
 	}))
 	defer server.Close()
 
@@ -199,6 +199,9 @@ func TestPools_ListByDexTargetsPoolsSearch(t *testing.T) {
 	}
 	if pool.PriceChangePercentage6h == nil || *pool.PriceChangePercentage6h != 0.009802157529374174 {
 		t.Errorf("PriceChangePercentage6h = %v, want 0.009802157529374174", pool.PriceChangePercentage6h)
+	}
+	if pool.PriceChangePercentage48h == nil || *pool.PriceChangePercentage48h != 0.0345612378991234 {
+		t.Errorf("PriceChangePercentage48h = %v, want 0.0345612378991234", pool.PriceChangePercentage48h)
 	}
 
 	if !resp.HasNextPage {
@@ -634,10 +637,12 @@ func TestPools_FilterSendsPriceChangeBounds(t *testing.T) {
 
 	min1h := 50.0
 	max5m := -20.0
+	min48h := 100.0
 	_, err := client.Pools.Filter(ctx, "ethereum", &PoolFilterOptions{
-		SortBy:           "price_change_percentage_1h",
-		PriceChange1hMin: &min1h,
-		PriceChange5mMax: &max5m,
+		SortBy:            "price_change_percentage_1h",
+		PriceChange1hMin:  &min1h,
+		PriceChange5mMax:  &max5m,
+		PriceChange48hMin: &min48h,
 	})
 	if err != nil {
 		t.Fatalf("Filter returned error: %v", err)
@@ -649,6 +654,7 @@ func TestPools_FilterSendsPriceChangeBounds(t *testing.T) {
 		// Negative bounds are the whole point of a max on a price change, and
 		// they are also where a naive %f formatter would produce -20.000000.
 		"price_change_percentage_5m_max=-20",
+		"price_change_percentage_48h_min=100",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("query %q is missing %q", got, want)
@@ -674,5 +680,24 @@ func TestSortFieldWindowsArePoolOnly(t *testing.T) {
 		if got := mapTokenSortField(field); got != "volume_usd_24h" {
 			t.Errorf("mapTokenSortField(%q) = %q, want the volume_usd_24h fallback", field, got)
 		}
+	}
+}
+
+// TestMapPoolSortField48hWindow is a regression test for a real bug: the
+// unknown-field branch of mapPoolSortField silently rewrote
+// price_change_percentage_48h to volume_usd_24h, so a caller asking to sort
+// pools by their 48h price move got a 24h-volume sort instead, with no error
+// anywhere in the response to reveal the swap. Verified against
+// api.dexpaprika.com on 2026-10-15 (keyless): /pools/search accepts
+// order_by=price_change_percentage_48h with a 200 and every row carries the
+// field, same as the 24h one. tokens/search has no 48h window, same asymmetry
+// as the shorter windows above, so mapTokenSortField is left untouched.
+func TestMapPoolSortField48hWindow(t *testing.T) {
+	const field = "price_change_percentage_48h"
+	if got := mapPoolSortField(field); got != field {
+		t.Errorf("mapPoolSortField(%q) = %q, want it passed through", field, got)
+	}
+	if got := mapTokenSortField(field); got != "volume_usd_24h" {
+		t.Errorf("mapTokenSortField(%q) = %q, want the volume_usd_24h fallback", field, got)
 	}
 }

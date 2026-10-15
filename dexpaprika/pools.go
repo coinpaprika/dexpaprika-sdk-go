@@ -70,6 +70,7 @@ type Pool struct {
 	PriceChangePercentage1h  *float64 `json:"price_change_percentage_1h,omitempty"`
 	PriceChangePercentage6h  *float64 `json:"price_change_percentage_6h,omitempty"`
 	PriceChangePercentage24h *float64 `json:"price_change_percentage_24h,omitempty"`
+	PriceChangePercentage48h *float64 `json:"price_change_percentage_48h,omitempty"`
 }
 
 // PoolsResponse represents the response for the pools endpoints.
@@ -576,6 +577,8 @@ type PoolFilterOptions struct {
 	PriceChange1hMax  *float64
 	PriceChange5mMin  *float64
 	PriceChange5mMax  *float64
+	PriceChange48hMin *float64
+	PriceChange48hMax *float64
 }
 
 // PoolFilterResponse represents the response from the /pools/search endpoint.
@@ -651,6 +654,8 @@ func (s *PoolsService) Filter(ctx context.Context, networkID string, opts *PoolF
 			"price_change_percentage_1h_max":  opts.PriceChange1hMax,
 			"price_change_percentage_5m_min":  opts.PriceChange5mMin,
 			"price_change_percentage_5m_max":  opts.PriceChange5mMax,
+			"price_change_percentage_48h_min": opts.PriceChange48hMin,
+			"price_change_percentage_48h_max": opts.PriceChange48hMax,
 		} {
 			if value != nil {
 				q.Add(name, strconv.FormatFloat(*value, 'f', -1, 64))
