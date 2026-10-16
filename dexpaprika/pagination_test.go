@@ -3,6 +3,8 @@ package dexpaprika
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -339,5 +341,82 @@ func TestTransactionsPaginator_GetErrorWithBadNetwork(t *testing.T) {
 	// Make sure the error matches what we got from GetNextPage
 	if !errors.Is(storedErr, err) {
 		t.Errorf("GetError() = %v, want %v", storedErr, err)
+	}
+}
+
+// TestPoolsPaginator_CursorRequiresKeyWhenKeyless covers the 403 a keyless (or
+// free-key) caller gets from the search endpoints once it sends a cursor: the
+// first page works with no key, but GetNextPage must hand back the API's own
+// *APIError, unchanged, rather than hiding it behind a generic error or
+// retrying forever.
+func TestPoolsPaginator_CursorRequiresKeyWhenKeyless(t *testing.T) {
+	const forbiddenBody = `{"error":"plan_required","tier":"keyless","required_tier":"free","param":"cursor","message":"Search results beyond the first page require an API key (free key: all pages). Create one in under a minute at https://console.dexpaprika.com","links":{"register":"https://console.dexpaprika.com","pricing":"https://dexpaprika.com/api/pricing","docs":"https://docs.dexpaprika.com/knowledge-base/rate-limits#pagination-rules","coupon":"https://dexpaprika.com/api/pricing?coupon=START10"}}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("cursor") != "" {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(forbiddenBody))
+			return
+		}
+		_, _ = w.Write([]byte(`{"results":[{"id":"0xpool"}],"has_next_page":true,"next_cursor":"abc123"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	paginator := NewPoolsPaginator(client, &ListOptions{Limit: 5}).ForNetwork("ethereum")
+
+	// The first page is not held back by the lack of a key.
+	if err := paginator.GetNextPage(ctx); err != nil {
+		t.Fatalf("GetNextPage() first page error = %v, want nil", err)
+	}
+	if len(paginator.GetCurrentPage()) == 0 {
+		t.Fatal("GetCurrentPage() after first page = empty, want pools")
+	}
+	if !paginator.HasNextPage() {
+		t.Fatal("HasNextPage() after first page = false, want true")
+	}
+
+	// The second page sends the cursor and hits the keyless 403.
+	err := paginator.GetNextPage(ctx)
+	if err == nil {
+		t.Fatal("GetNextPage() second page = nil error, want the plan_required 403")
+	}
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("GetNextPage() returned error of type %T, want *APIError", err)
+	}
+	if apiErr.StatusCode != http.StatusForbidden {
+		t.Errorf("APIError.StatusCode = %d, want %d", apiErr.StatusCode, http.StatusForbidden)
+	}
+	if apiErr.Param != "cursor" {
+		t.Errorf("APIError.Param = %q, want %q", apiErr.Param, "cursor")
+	}
+	if apiErr.RequiredTier != "free" {
+		t.Errorf("APIError.RequiredTier = %q, want %q", apiErr.RequiredTier, "free")
+	}
+
+	if !IsKeyRequiredForPaging(err) {
+		t.Error("IsKeyRequiredForPaging(err) = false, want true for the keyless cursor 403")
+	}
+
+	// GetNextPage must hand back the exact error the client produced, not a
+	// rewrapped or generic one.
+	if !errors.Is(paginator.GetError(), err) {
+		t.Errorf("GetError() = %v, want the exact error GetNextPage returned", paginator.GetError())
+	}
+
+	// Once the error is recorded, HasNextPage must not keep inviting another
+	// call into the same 403.
+	if paginator.HasNextPage() {
+		t.Error("HasNextPage() after a 403 = true, want false")
 	}
 }
