@@ -202,6 +202,15 @@ ignored rather than rejected: the call returns `200` with real data and you are
 quietly served as an anonymous caller. To confirm a key is landing, call `/usage`
 and check the `plan` field; `keyless` means the key never arrived.
 
+**A 403 with no JSON body on the Pro host means the key was rejected before
+the request reached the API.** `*APIError.Message` says so directly: "The API
+key was refused before it reached the API." plus a reminder to check that the
+whole key was pasted into the `Authorization` header with nothing in front of
+it. Get or verify a key at [console.dexpaprika.com](https://console.dexpaprika.com).
+The error still matches `errors.Is(err, dexpaprika.ErrForbidden)`; a 403 that
+does carry a JSON body (for example `plan_required`) is unaffected and keeps
+naming the plan in `apiErr.RequiredTier` as before.
+
 ## Advanced Configuration
 
 ```go
