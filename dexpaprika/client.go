@@ -28,7 +28,7 @@ const (
 
 	// Version of this SDK, reported in the User-Agent. Keep in step with the git
 	// tag; the module proxy serves tags, not this constant.
-	Version = "1.12.0"
+	Version = "1.13.0"
 
 	// APIKeyEnvVar is consulted when no key is passed to NewClient.
 	//
@@ -509,7 +509,8 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 		Resource     string `json:"resource"`
 		RequiredTier string `json:"required_tier"`
 	}
-	if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil {
+	jsonErr := json.Unmarshal(body, &errorResp)
+	if jsonErr == nil {
 		switch {
 		case errorResp.Error != "" && errorResp.Message != "":
 			errMsg = errorResp.Error + ": " + errorResp.Message
@@ -532,6 +533,19 @@ func createAPIError(resp *http.Response, body []byte) *APIError {
 		err = ErrUnauthorized
 	case 403:
 		err = ErrForbidden
+		// A 403 whose body is not JSON never reached DexPaprika's own API: it
+		// was stopped at the edge (observed on api-pro.dexpaprika.com as a
+		// Cloudflare block page, HTML, no DexPaprika branding) before any
+		// plan or tier check ran. That is a different problem from a
+		// plan_required 403, which always carries a JSON body, so this
+		// branch never fires for one and that path is untouched. Without
+		// this, the caller saw only "forbidden (status code: 403)" and had
+		// no way to tell a rejected key from a plan limit.
+		if jsonErr != nil {
+			errMsg = "The API key was refused before it reached the API.\n\n" +
+				"Check that the whole key was pasted into the Authorization header " +
+				"with nothing in front of it. Keys are at https://console.dexpaprika.com."
+		}
 	case 404:
 		err = ErrNotFound
 	case 410:

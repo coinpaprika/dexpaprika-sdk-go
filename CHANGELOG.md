@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0] - 2026-10-16
+
+Keyless search paging now 403s, pools gain a 48h price-change window, and a Pro-host key rejection reads clearly instead of as a generic Forbidden.
+
+### Added
+- `IsKeyRequiredForPaging(err)` detects the 403 that `/pools/search`, `/tokens/search` and their network-scoped forms return once a keyless caller sends a `cursor`. The first page still works with no key; paging past it needs any API key, a free one included. The API currently answers 200 with an `x-api-warning` header and starts returning the 403 around 2026-10-21. `PoolsPaginator` and `GetNextPage` document the limit, and `*APIError` still unwraps with `errors.Is(err, ErrForbidden)`.
+- Pool search accepts `price_change_percentage_48h` as a sort field, `PoolFilterOptions.PriceChange48hMin` / `PriceChange48hMax` as filters, and `Pool.PriceChangePercentage48h` on every pool row, alongside the existing 24h/6h/1h/5m windows. Token search is unchanged; it still 400s on the 48h field.
+
+### Fixed
+- A 403 whose body is not JSON (the Cloudflare block page a key without the right shape gets on `api-pro.dexpaprika.com`) used to surface as a bare "forbidden (status code: 403)" with no way to tell a rejected key from a plan limit. `*APIError.Message` now reads "The API key was refused before it reached the API." plus a reminder to check that the whole key was pasted into the `Authorization` header with nothing in front of it, and a link to get or verify a key at console.dexpaprika.com. A 403 that does carry a JSON body (for example `plan_required`) keeps its current handling untouched.
+- Pool sort used to silently replace `price_change_percentage_48h` with the default sort field instead of erroring or applying it; it is now passed through to the API like the other windows.
+
 ## [1.12.0] - 2026-10-14
 
 Technical indicators for pools and tokens.

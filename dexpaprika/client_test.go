@@ -704,6 +704,112 @@ func TestIsKeyRequiredForPaging(t *testing.T) {
 	}
 }
 
+// TestClient_Do_403WithHTMLBody covers the Cloudflare block page a key
+// without the right shape gets on api-pro.dexpaprika.com: a 403 whose body is
+// HTML, not JSON. Before the fix, createAPIError found no "error" or
+// "message" field in a body it could not even parse as JSON, so Message
+// stayed empty and the caller saw only "forbidden (status code: 403)" with no
+// way to tell a rejected key from a plan limit. This asserts the API's own
+// wording.
+func TestClient_Do_403WithHTMLBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "<html>Sorry, you have been blocked</html>")
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+
+	req, err := client.NewRequest(http.MethodGet, "/test", nil)
+	if err != nil {
+		t.Fatalf("NewRequest returned error: %v", err)
+	}
+
+	var result interface{}
+	resp, err := client.Do(context.Background(), req, &result)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	if err == nil {
+		t.Fatal("Do() returned nil error, want error")
+	}
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Do() returned error of type %T, want *APIError", err)
+	}
+
+	if !errors.Is(err, ErrForbidden) {
+		t.Errorf("Do() returned error %v, want it to wrap ErrForbidden", err)
+	}
+
+	if apiErr.StatusCode != http.StatusForbidden {
+		t.Errorf("APIError.StatusCode = %d, want %d", apiErr.StatusCode, http.StatusForbidden)
+	}
+
+	wantMessage := "The API key was refused before it reached the API."
+	if !strings.Contains(apiErr.Message, wantMessage) {
+		t.Errorf("APIError.Message = %q, want it to contain %q", apiErr.Message, wantMessage)
+	}
+
+	// No auth scheme word, ever.
+	if strings.Contains(apiErr.Message, "Bearer") {
+		t.Errorf("APIError.Message = %q, must never mention an auth scheme word", apiErr.Message)
+	}
+
+	// A plan_required 403 (JSON body) must keep its current handling: the
+	// RequiredTier field populated and no HTML-block wording.
+	if apiErr.RequiredTier != "" {
+		t.Errorf("APIError.RequiredTier = %q, want empty for a non-JSON body", apiErr.RequiredTier)
+	}
+}
+
+// TestClient_Do_403WithJSONBody_Unaffected is the control: a plan_required
+// 403 carries a JSON body and must keep naming the plan exactly as before,
+// untouched by the HTML-body handling above.
+func TestClient_Do_403WithJSONBody_Unaffected(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, `{"error":"plan_required","message":"This endpoint needs a Dev plan or higher.","required_tier":"dev"}`)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetryConfig(0, 1*time.Millisecond, 1*time.Millisecond),
+	)
+
+	req, err := client.NewRequest(http.MethodGet, "/test", nil)
+	if err != nil {
+		t.Fatalf("NewRequest returned error: %v", err)
+	}
+
+	var result interface{}
+	resp, err := client.Do(context.Background(), req, &result)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Do() returned error of type %T, want *APIError", err)
+	}
+
+	if apiErr.RequiredTier != "dev" {
+		t.Errorf("APIError.RequiredTier = %q, want %q", apiErr.RequiredTier, "dev")
+	}
+
+	if strings.Contains(apiErr.Message, "refused before it reached the API") {
+		t.Errorf("APIError.Message = %q, a JSON-bodied 403 must not get the HTML-block wording", apiErr.Message)
+	}
+}
+
 // TestClient_HonoursRetryAfter covers both shapes DexPaprika uses to say "come
 // back later". A keyed request gets a Retry-After header; a keyless one gets a
 // 429 with the delay only in the JSON body. Before this, neither was read, so
