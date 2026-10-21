@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1] - 2026-10-21
+
+Network ids and pool and token addresses can no longer change the request path.
+
+### Security
+- Every method that puts a network id, pool address or token address into the request path now checks it first. A value that is `.` or `..`, or that contains `/`, `\`, `?`, `#`, `%`, whitespace or a control character, returns an error and no request is sent. Until now such a value was placed in the URL as given, so an application that passed user input to the SDK could be made to send its API key to a different endpoint or with a different query, for example `Pools.GetDetails(ctx, "ethereum", "../../../stats", false)`. Real ids, including Sui and Aptos ids with `::` and TON addresses, are sent unchanged. `Networks.ListDexes` also returns "network ID is required" for an empty id instead of requesting `/networks//dexes`.
+
 ## [1.13.0] - 2026-10-16
 
 Keyless search paging now 403s, pools gain a 48h price-change window, and a Pro-host key rejection reads clearly instead of as a generic Forbidden.

@@ -211,8 +211,8 @@ func (s *TokensService) GetIndicator(ctx context.Context, networkID, tokenAddres
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
-	if tokenAddress == "" {
-		return nil, fmt.Errorf("token address is required")
+	if err := validateTokenAddress(tokenAddress); err != nil {
+		return nil, err
 	}
 	if err := validateIndicatorOptions(opts); err != nil {
 		return nil, err

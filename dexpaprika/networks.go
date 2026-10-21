@@ -61,6 +61,10 @@ type PageInfo struct {
 // ListDexes returns a list of all available dexes on a specific network.
 // Implements the getNetworkDexes operation from the OpenAPI spec.
 func (s *NetworksService) ListDexes(ctx context.Context, networkID string, page, limit int) (*DexesResponse, error) {
+	if err := validateNetworkID(networkID); err != nil {
+		return nil, err
+	}
+
 	path := "/networks/" + networkID + "/dexes"
 
 	req, err := s.client.NewRequest(http.MethodGet, path, nil)

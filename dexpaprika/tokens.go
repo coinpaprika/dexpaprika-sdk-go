@@ -53,8 +53,8 @@ func (s *TokensService) GetDetails(ctx context.Context, networkID, tokenAddress 
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
-	if tokenAddress == "" {
-		return nil, fmt.Errorf("token address is required")
+	if err := validateTokenAddress(tokenAddress); err != nil {
+		return nil, err
 	}
 
 	path := fmt.Sprintf("/networks/%s/tokens/%s", networkID, tokenAddress)
@@ -120,8 +120,8 @@ func (s *TokensService) GetOHLCV(ctx context.Context, networkID, tokenAddress st
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
 	}
-	if tokenAddress == "" {
-		return nil, fmt.Errorf("token address is required")
+	if err := validateTokenAddress(tokenAddress); err != nil {
+		return nil, err
 	}
 
 	path := fmt.Sprintf("/networks/%s/tokens/%s/ohlcv", networkID, tokenAddress)
