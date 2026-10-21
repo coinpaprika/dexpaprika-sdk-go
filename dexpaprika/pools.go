@@ -119,20 +119,22 @@ type ListOptions struct {
 	Cursor  string
 }
 
-// validateNetworkID validates that a network ID is not empty
+// validateNetworkID validates that a network ID is not empty and is safe to
+// place in a request path.
 func validateNetworkID(networkID string) error {
 	if networkID == "" {
 		return fmt.Errorf("network ID is required")
 	}
-	return nil
+	return checkSegment("network ID", networkID)
 }
 
-// validatePoolAddress validates that a pool address is not empty
+// validatePoolAddress validates that a pool address is not empty and is safe
+// to place in a request path.
 func validatePoolAddress(poolAddress string) error {
 	if poolAddress == "" {
 		return fmt.Errorf("pool address is required")
 	}
-	return nil
+	return checkSegment("pool address", poolAddress)
 }
 
 // List returns a list of top pools from all networks.
