@@ -33,7 +33,7 @@ func recordingClient(t *testing.T) (*Client, func() []string) {
 
 const (
 	pathTestPool  = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
-	pathTestToken = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+	pathTestWETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 )
 
 type pathCall func(c *Client, network, address string) error
@@ -51,7 +51,7 @@ var networkCalls = map[string]pathCall{
 	},
 	"Pools.Filter": func(c *Client, n, _ string) error { _, err := c.Pools.Filter(context.Background(), n, nil); return err },
 	"Tokens.GetPools": func(c *Client, n, _ string) error {
-		_, err := c.Tokens.GetPools(context.Background(), n, pathTestToken, nil)
+		_, err := c.Tokens.GetPools(context.Background(), n, pathTestWETH, nil)
 		return err
 	},
 	"Tokens.GetTop": func(c *Client, n, _ string) error {
@@ -63,7 +63,7 @@ var networkCalls = map[string]pathCall{
 		return err
 	},
 	"Tokens.GetMultiPrices": func(c *Client, n, _ string) error {
-		_, err := c.Tokens.GetMultiPrices(context.Background(), n, []string{pathTestToken})
+		_, err := c.Tokens.GetMultiPrices(context.Background(), n, []string{pathTestWETH})
 		return err
 	},
 	"Networks.ListDexes": func(c *Client, n, _ string) error {
@@ -146,7 +146,7 @@ func TestAddressThatLeavesItsSegmentIsRefusedBeforeSending(t *testing.T) {
 func TestRealIDsReachThePathUnchanged(t *testing.T) {
 	cases := [][2]string{
 		{"ethereum", pathTestPool},
-		{"bob_network", pathTestToken},
+		{"bob_network", pathTestWETH},
 		{"solana", "So11111111111111111111111111111111111111112"},
 		{"sui", "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"},
 		{"ton", "EQA-X_yo3fzzbDbJ_0bzFWKqtRuZFIRa1sJsveZJ1YpViO3r"},
