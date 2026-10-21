@@ -32,7 +32,7 @@ func recordingClient(t *testing.T) (*Client, func() []string) {
 }
 
 const (
-	pathTestPool  = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+	pathTestPool = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	pathTestWETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 )
 
