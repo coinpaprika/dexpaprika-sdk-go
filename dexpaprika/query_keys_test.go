@@ -53,7 +53,7 @@ func rejectedKeys(t *testing.T, call func(c *Client) error, allowed map[string]b
 func TestFilterSendsOnlyAcceptedKeys(t *testing.T) {
 	f := func(v float64) *float64 { return &v }
 	n := 1
-	priceWindows := []string{}
+	priceWindows := make([]string, 0, 10)
 	for _, w := range []string{"5m", "1h", "6h", "24h", "48h"} {
 		priceWindows = append(priceWindows, "price_change_percentage_"+w+"_min", "price_change_percentage_"+w+"_max")
 	}
