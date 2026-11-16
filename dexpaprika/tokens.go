@@ -416,10 +416,10 @@ func (s *TokensService) Filter(ctx context.Context, networkID string, opts *Toke
 			q.Add("liquidity_usd_min", fmt.Sprintf("%f", *opts.LiquidityMin))
 		}
 		if opts.FDVMin != nil {
-			q.Add("fdv_min", fmt.Sprintf("%f", *opts.FDVMin))
+			q.Add("fdv_usd_min", fmt.Sprintf("%f", *opts.FDVMin))
 		}
 		if opts.FDVMax != nil {
-			q.Add("fdv_max", fmt.Sprintf("%f", *opts.FDVMax))
+			q.Add("fdv_usd_max", fmt.Sprintf("%f", *opts.FDVMax))
 		}
 		if opts.Txns24hMin != nil {
 			q.Add("txns_24h_min", fmt.Sprintf("%d", *opts.Txns24hMin))

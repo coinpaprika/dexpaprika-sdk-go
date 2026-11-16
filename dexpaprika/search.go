@@ -3,7 +3,6 @@ package dexpaprika
 import (
 	"context"
 	"net/http"
-	"net/url"
 )
 
 // SearchService handles communication with the search related
@@ -41,7 +40,7 @@ func (s *SearchService) Search(ctx context.Context, query string) (*SearchResult
 	}
 
 	q := req.URL.Query()
-	q.Add("query", url.QueryEscape(query))
+	q.Set("query", query)
 	req.URL.RawQuery = q.Encode()
 
 	var result SearchResult

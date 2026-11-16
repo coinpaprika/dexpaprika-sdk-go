@@ -470,14 +470,14 @@ type TransactionOption func(q *url.Values)
 // Results are always capped to the last 7 days.
 func WithFromTimestamp(from int64) TransactionOption {
 	return func(q *url.Values) {
-		q.Add("from", fmt.Sprintf("%d", from))
+		q.Set("from", fmt.Sprintf("%d", from))
 	}
 }
 
 // WithToTimestamp filters transactions up to this UNIX timestamp (exclusive).
 func WithToTimestamp(to int64) TransactionOption {
 	return func(q *url.Values) {
-		q.Add("to", fmt.Sprintf("%d", to))
+		q.Set("to", fmt.Sprintf("%d", to))
 	}
 }
 

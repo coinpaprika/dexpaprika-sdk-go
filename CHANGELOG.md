@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.13.2] - 2026-11-16
+
+From 23 November 2026 the API answers `400` to a query parameter an endpoint does not accept, or to one sent twice. Until then it ignores them. Three places in the SDK would have hit that.
+
+### Fixed
+- `Tokens.Filter` sent `FDVMin` and `FDVMax` as `fdv_min` and `fdv_max`. The API calls them `fdv_usd_min` and `fdv_usd_max`, so today the FDV bounds are ignored and the results are not filtered by FDV. They now go out under the right names.
+- `WithFromTimestamp` and `WithToTimestamp` added `from` and `to` instead of setting them, so passing one of them together with `WithFrom`, `WithTo` or a second copy of itself sent the key twice. Each option now replaces the value, the way `WithFrom` and `WithTo` already did, and the last option given wins.
+- `Search.Search` escaped the query before the URL encoder escaped it again, so a query with a reserved character such as `+` or `&` reached the API double-encoded. It is now encoded once.
+
 ## [1.13.1] - 2026-10-21
 
 Network ids and pool and token addresses can no longer change the request path.
