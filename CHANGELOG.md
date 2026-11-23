@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Documentation only: `Tokens.GetMultiPrices` needs an API key. Since 18 November 2026 a keyless call gets `403` with `plan_required` (required tier `free`), returned as an `*APIError` that matches `errors.Is(err, ErrForbidden)`. A free key is enough, on the default host. The doc comment and the README's "Batch Token Prices" example now say so, and the example sets a key with `WithAPIKey`. Free keys: https://console.dexpaprika.com, plans: https://dexpaprika.com/api/pricing. No code changed.
+
 ## [1.13.2] - 2026-11-16
 
 From 23 November 2026 the API answers `400` to a query parameter an endpoint does not accept, or to one sent twice. Until then it ignores them. Three places in the SDK would have hit that.

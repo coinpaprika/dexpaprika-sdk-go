@@ -553,8 +553,11 @@ filteredTokens, err := client.Tokens.Filter(ctx, "ethereum", &dexpaprika.TokenFi
 
 ### Batch Token Prices
 
+Batch prices need an API key. A free key is enough, on the default host. Without one the API answers `403` with `plan_required`, which the SDK returns as an `*APIError` matching `errors.Is(err, dexpaprika.ErrForbidden)`. Get a free key at https://console.dexpaprika.com.
+
 ```go
 // Get prices for multiple tokens in one request (max 10)
+client := dexpaprika.NewClient(dexpaprika.WithAPIKey("api_your_key_here"))
 prices, err := client.Tokens.GetMultiPrices(ctx, "ethereum", []string{
     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH
     "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
