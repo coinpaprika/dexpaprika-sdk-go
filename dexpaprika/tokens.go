@@ -459,6 +459,11 @@ type TokenPrice struct {
 
 // GetMultiPrices returns batch prices for multiple tokens on a network.
 // The tokens parameter accepts up to 10 token addresses.
+//
+// This endpoint needs an API key. A free key is enough, on the default host,
+// api.dexpaprika.com. A keyless call returns an *APIError with status 403
+// that matches errors.Is(err, ErrForbidden), with RequiredTier set to "free".
+// Get a free key at https://console.dexpaprika.com
 func (s *TokensService) GetMultiPrices(ctx context.Context, networkID string, tokens []string) ([]TokenPrice, error) {
 	if err := validateNetworkID(networkID); err != nil {
 		return nil, err
