@@ -2,6 +2,7 @@ package dexpaprika
 
 import (
 	"context"
+	"os"
 	"testing"
 )
 
@@ -145,6 +146,11 @@ func TestTokensFilterWithFDV(t *testing.T) {
 }
 
 func TestTokensGetMultiPrices(t *testing.T) {
+	// Batch prices need an API key (a free key is enough). CI on forks has no
+	// DEXPAPRIKA_API_KEY, so skip rather than send a request into a 403.
+	if os.Getenv(APIKeyEnvVar) == "" {
+		t.Skip("DEXPAPRIKA_API_KEY not set: batch prices need an API key (a free key is enough)")
+	}
 	client := NewClient()
 	ctx := context.Background()
 
@@ -173,6 +179,11 @@ func TestTokensGetMultiPrices(t *testing.T) {
 }
 
 func TestTokensGetMultiPricesSingle(t *testing.T) {
+	// Batch prices need an API key (a free key is enough). CI on forks has no
+	// DEXPAPRIKA_API_KEY, so skip rather than send a request into a 403.
+	if os.Getenv(APIKeyEnvVar) == "" {
+		t.Skip("DEXPAPRIKA_API_KEY not set: batch prices need an API key (a free key is enough)")
+	}
 	client := NewClient()
 	ctx := context.Background()
 
